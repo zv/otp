@@ -31,14 +31,16 @@
    [basic/1,
     api_open_close/1,api_listen/1,api_connect_init/1,api_opts/1,
     xfer_min/1,xfer_active/1,def_sndrcvinfo/1,implicit_inet6/1,
-    basic_stream/1, xfer_stream_min/1, peeloff/1, buffers/1]).
+    basic_stream/1, xfer_stream_min/1, peeloff/1, buffers/1,
+    open_multihoming_ipv4_socket/1, open_multihoming_ipv6_socket/1]).
 
 suite() -> [{ct_hooks,[ts_install_cth]}].
 
 all() -> 
     [basic, api_open_close, api_listen, api_connect_init,
      api_opts, xfer_min, xfer_active, def_sndrcvinfo, implicit_inet6,
-     basic_stream, xfer_stream_min, peeloff, buffers].
+     basic_stream, xfer_stream_min, peeloff, buffers,
+     open_multihoming_ipv4_socket, open_multihoming_ipv6_socket].
 
 groups() -> 
     [].
@@ -1329,3 +1331,61 @@ match_unless_solaris(A, B) ->
 	{unix,sunos} -> B;
 	_ -> A = B
     end.
+
+open_multihoming_ipv4_socket(doc) ->
+    "Test opening a multihoming ipv4 socket";
+open_multihoming_ipv4_socket(suite) ->
+    [];
+open_multihoming_ipv4_socket(Config) when is_list(Config) ->
+    ?line Hostname = ok(inet:gethostname()),
+    ?line HostAddrIPv4 = ok(inet:getaddr(Hostname, inet)),
+    ?line S = ok(gen_sctp:open(0, [{ip,HostAddrIPv4},{ip,{127,0,0,1}}])),
+    ?line ok = gen_sctp:listen(S, true),
+    ?line setup_connection(S, HostAddrIPv4, inet),
+    ?line ok = gen_sctp:close(S).
+
+open_multihoming_ipv6_socket(doc) ->
+    "Test opening a multihoming ipv6 socket";
+open_multihoming_ipv6_socket(suite) ->
+    [];
+open_multihoming_ipv6_socket(Config) when is_list(Config) ->
+    ?line Hostname = ok(inet:gethostname()),
+    ?line LoopbackIPv6 = {0,0,0,0,0,0,0,1},
+    ?line
+	case inet:getaddr(Hostname, inet6) of
+	    {ok,HostAddrIPv6} when HostAddrIPv6 =/= LoopbackIPv6 ->
+		?line
+		    case is_good_ipv6_address(HostAddrIPv6) of
+			true ->
+			    ?line io:format("using ipv6 addresses ~p and ~p~n",
+					    [HostAddrIPv6, LoopbackIPv6]),
+			    ?line S = ok(gen_sctp:open(
+					   0, [{ip,HostAddrIPv6},
+					       {ip,LoopbackIPv6}, inet6])),
+			    ?line ok = gen_sctp:listen(S, true),
+			    ?line setup_connection(S, HostAddrIPv6, inet6),
+			    ?line ok = gen_sctp:close(S);
+			false ->
+			    {skip,"Need 2 good IPv6 addresses"}
+		    end;
+	    {ok,HostAddrIPv6} when HostAddrIPv6 =:= LoopbackIPv6 ->
+		{skip,"Need 2 different IPv6 addresses, found only ::1"};
+	    {error,eafnosupport} ->
+		{skip,"Can not look up IPv6 address"}
+        end.
+
+is_good_ipv6_address({0,0,0,0,0,16#ffff,_,_}) -> false; %% ipv4 mapped
+is_good_ipv6_address({16#fe80,_,_,_,_,_,_,_}) -> false; %% link-local
+is_good_ipv6_address(_)                       -> true.
+
+setup_connection(S1, Addr, IpFamily) ->
+    ?line P1 = ok(inet:port(S1)),
+    ?line S2 = ok(gen_sctp:open(0, [IpFamily])),
+    ?line P2 = ok(inet:port(S2)),
+    ?line #sctp_assoc_change{state=comm_up} =
+	ok(gen_sctp:connect(S2, Addr, P1, [])),
+    ?line case ok(gen_sctp:recv(S1)) of
+	      {Addr,P2,[],#sctp_assoc_change{state=comm_up}} ->
+		  ok
+	  end,
+    ?line ok = gen_sctp:close(S2).
