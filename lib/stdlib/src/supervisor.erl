@@ -255,7 +255,10 @@ init_children(State, StartSpec) ->
                     {ok, State#state{children = NChildren}};
                 {error, NChildren} ->
                     terminate_children(NChildren, SupName),
-                    {stop, shutdown}
+                    {stop, shutdown};
+                {error, NChildren, Reason} ->
+                    terminate_children(NChildren, SupName),
+                    {stop, Reason}
             end;
         Error ->
             {stop, {start_spec, Error}}
@@ -277,7 +280,7 @@ init_dynamic(_State, StartSpec) ->
 %%       SupName = {local, atom()} | {global, atom()} | {pid(), Mod}
 %% Purpose: Start all children.  The new list contains #child's 
 %%          with pids.
-%% Returns: {ok, NChildren} | {error, NChildren}
+%% Returns: {ok, NChildren} | {error, NChildren, Reason}
 %%          NChildren = [child_rec()] in termination order (reversed
 %%                        start order)
 %%-----------------------------------------------------------------
@@ -293,7 +296,7 @@ start_children([Child|Chs], NChildren, SupName) ->
 	    start_children(Chs, [Child#child{pid = Pid}|NChildren], SupName);
 	{error, Reason} ->
 	    report_error(start_error, Reason, Child, SupName),
-	    {error, lists:reverse(Chs) ++ [Child | NChildren]}
+	    {error, lists:reverse(Chs) ++ [Child | NChildren], Reason}
     end;
 start_children([], NChildren, _SupName) ->
     {ok, NChildren}.
@@ -793,7 +796,7 @@ restart(rest_for_one, Child, State) ->
     case start_children(ChAfter2, State#state.name) of
 	{ok, ChAfter3} ->
 	    {ok, State#state{children = ChAfter3 ++ ChBefore}};
-	{error, ChAfter3} ->
+	{error, ChAfter3, _Reason} ->
 	    NChild = Child#child{pid=restarting(Child#child.pid)},
 	    NState = State#state{children = ChAfter3 ++ ChBefore},
 	    {try_again, replace_child(NChild,NState)}
@@ -804,7 +807,7 @@ restart(one_for_all, Child, State) ->
     case start_children(Children2, State#state.name) of
 	{ok, NChs} ->
 	    {ok, State#state{children = NChs}};
-	{error, NChs} ->
+	{error, NChs, _Reason} ->
 	    NChild = Child#child{pid=restarting(Child#child.pid)},
 	    NState = State#state{children = NChs},
 	    {try_again, replace_child(NChild,NState)}
