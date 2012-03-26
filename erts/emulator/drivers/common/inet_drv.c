@@ -10120,8 +10120,9 @@ static ErlDrvSSizeT packet_inet_ctl(ErlDrvData e, unsigned int cmd, char* buf,
 	    /* Construct the list of addresses we bind to. The curr limit is
 	       256 addrs. Buff structure: Flags(1), ListItem,...:
 	    */
-	    struct sockaddr addrs[256];
+	    inet_address addrs[256];
 	    char* curr;
+	    char* addr_dest;
 	    int   add_flag, n, rflag;
 	    
 	    if (!IS_SCTP(desc))
@@ -10131,6 +10132,7 @@ static ErlDrvSSizeT packet_inet_ctl(ErlDrvData e, unsigned int cmd, char* buf,
 	    add_flag = get_int8(curr);
 	    curr++;
 
+	    addr_dest = (char *)addrs;
 	    for(n=0; n < 256 && curr < buf+len; n++)
 		{
 		    /* List item format: Port(2), IP(4|16) -- compatible with
@@ -10141,16 +10143,14 @@ static ErlDrvSSizeT packet_inet_ctl(ErlDrvData e, unsigned int cmd, char* buf,
 		    if (curr == NULL)
 			return ctl_error(EINVAL, rbuf, rsize);
 
-		    /* Now: we need to squeeze "tmp" into the size of "sockaddr",
-		       which is smaller than "tmp" for IPv6 (extra IN6 info will
-		       be cut off): */
-		    memcpy(addrs + n, &tmp, sizeof(struct sockaddr));
+		    memcpy(addr_dest, &tmp, alen);
+		    addr_dest += alen;
 		}
 	    /* Make the real flags: */
 	    rflag = add_flag ? SCTP_BINDX_ADD_ADDR : SCTP_BINDX_REM_ADDR;
 
 	    /* Invoke the call: */
-	    if (p_sctp_bindx(desc->s, addrs, n, rflag) < 0)
+	    if (p_sctp_bindx(desc->s, (struct sockaddr *)addrs, n, rflag) < 0)
 		return ctl_error(sock_errno(), rbuf, rsize);
 
 	    desc->state = INET_STATE_BOUND;
