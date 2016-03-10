@@ -68,6 +68,10 @@
 
 /* ZV's stuff */
 static void do_read_from_file(EpmdVars *g, Connection *s);
+static int write_buf_to_tmp(EpmdVars *g, char *buf,int len);
+
+
+
 
 /* forward declarations */
 
@@ -199,6 +203,8 @@ static int verify_utf8(const char *src, int sz, int null_term)
 
 static EPMD_INLINE void select_fd_set(EpmdVars* g, int fd)
 {
+    return;
+
     FD_SET(fd, &g->orig_read_mask);
     if (fd >= g->select_fd_top) {
 	g->select_fd_top = fd + 1;
@@ -1454,7 +1460,8 @@ static time_t current_time(EpmdVars *g)
 
 static int reply(EpmdVars *g,int fd,char *buf,int len)
 {
-  int val;
+    return len;
+    int val;
 
   if (len < 0)
     {
@@ -1573,6 +1580,76 @@ static void print_names(EpmdVars *g)
 	  g->nodes.unreg_count);
   fprintf(stderr, "*****     unreg calculated count: %d\r\n", count);
 }
+
+
+
+// ZV
+
+void fake_do_read(EpmdVars *g, const char *filename) {
+    // Setup Code
+    node_init(g);
+    // g->conn = conn_init(g);
+    // End setup code
+
+    // Open input file
+    FILE *input;
+    if (!(input = fopen(filename, "r"))) {
+        dbg_tty_printf(g,1,"File not found");
+    }
+
+    // Open output file
+    FILE *output;
+    if (!(output = fopen("/tmp/epmd_output.log", "a+"))) {
+        dbg_tty_printf(g,1,"Couldn't open output file");
+    }
+
+    char temp_buf[INBUF_SIZE];
+    ssize_t numRead;
+    numRead = fread(temp_buf, sizeof temp_buf[0], INBUF_SIZE, input);
+
+    Connection fc = {
+        .fd = output,
+        .local_peer = 1,
+        .keep = 0,
+        .want = 0,
+        // Our data
+        .buf = temp_buf,
+        // Length
+        .got = numRead,
+    };
+
+    fclose(input);
+
+    if (numRead > 0) {
+        do_read_from_file(g, &fc);
+    }
+
+    fclose(output);
+
+    return;
+}
+
+static void do_read_from_file(EpmdVars *g, Connection *s) {
+    if ((s->want == 0) && (s->got >= 2))
+        {
+            /* We can't copy these, but we will send them "down the line" */
+            s->want = get_int16(s->buf) + 2;
+            if ((s->want < 3) || (s->want >= INBUF_SIZE)) return;
+            if (s->got > s->want) return;
+        }
+
+    s->mod_time = current_time(g); /* Note activity */
+
+    if (s->want == s->got) {
+        /* Skip header bytes */
+        do_request(g, s->fd, s, s->buf + 2, s->got - 2);
+    }
+
+    return;
+}
+
+
+
 static int write_buf_to_tmp(EpmdVars *g, char *buf,int len) {
     //req_count++;
     char outputFilename[200] = "/tmp/test_epmd/";
@@ -1615,3 +1692,4 @@ static int write_buf_to_tmp(EpmdVars *g, char *buf,int len) {
     fwrite(buf, sizeof buf[0], len, ofp);
     return fclose(ofp);
 }
+

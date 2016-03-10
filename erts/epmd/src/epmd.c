@@ -30,6 +30,10 @@
 #  include <stdlib.h>
 #endif
 #include <time.h>
+
+/* ZV */
+//static void fake_do_read(EpmdVars *g,const char *filename);
+
 /* forward declarations */
 
 static void usage(EpmdVars *);
@@ -241,31 +245,40 @@ int main(int argc, char** argv)
 		usage(g);
 	    epmd_cleanup_exit(g,0);
 	} else if (strcmp(argv[0], "-dump") == 0) {
-	    if (argc == 1)
-		epmd_call(g, EPMD_DUMP_REQ);
-	    else
-		usage(g);
-	    epmd_cleanup_exit(g,0);
-	} else if (strcmp(argv[0], "-stop") == 0) {
-	    if (argc == 2)
-		stop_cli(g, argv[1]);
-	    else
-		usage(g);
-	    epmd_cleanup_exit(g,0);
+	    if (argc == 1) {
+          epmd_call(g, EPMD_DUMP_REQ);
+      } else {
+          usage(g);
+          epmd_cleanup_exit(g,0);
+      }
+  } else if (strcmp(argv[0], "-fuzz") == 0) {
+      if (argc == 1) {
+          usage(g);
+      } else {
+          fake_do_read(g, argv[argc - 1]);
+          epmd_cleanup_exit(g,0);
+      }
+
+  } else if (strcmp(argv[0], "-stop") == 0) {
+      if (argc == 2)
+          stop_cli(g, argv[1]);
+      else
+          usage(g);
+      epmd_cleanup_exit(g,0);
 #ifdef HAVE_SYSTEMD_DAEMON
-	} else if (strcmp(argv[0], "-systemd") == 0) {
-            g->is_systemd = 1;
-            argv++; argc--;
+  } else if (strcmp(argv[0], "-systemd") == 0) {
+      g->is_systemd = 1;
+      argv++; argc--;
 #endif /* HAVE_SYSTEMD_DAEMON */
-	} else
-	    usage(g);
+  } else
+      usage(g);
     }
     dbg_printf(g,1,"epmd running - daemon = %d",g->is_daemon);
 
 #ifndef NO_SYSCONF
     if ((g->max_conn = sysconf(_SC_OPEN_MAX)) <= 0)
 #endif
-      g->max_conn = MAX_FILES;
+        g->max_conn = MAX_FILES;
   
     /*
      * max_conn must not be greater than FD_SETSIZE.
@@ -273,13 +286,13 @@ int main(int argc, char** argv)
      */
   
     if (g->max_conn > FD_SETSIZE) {
-      g->max_conn = FD_SETSIZE;
+        g->max_conn = FD_SETSIZE;
     }
 
     if (g->is_daemon)  {
-	run_daemon(g);
+        run_daemon(g);
     } else {
-	run(g);
+        run(g);
     }
     return 0;
 }
@@ -293,23 +306,23 @@ static void run_daemon(EpmdVars *g)
 
     /* fork to make sure first child is not a process group leader */
     if (( child_pid = fork()) < 0)
-      {
+        {
 #ifdef HAVE_SYSLOG_H
-	syslog(LOG_ERR,"erlang mapper daemon cant fork %m");
+            syslog(LOG_ERR,"erlang mapper daemon cant fork %m");
 #endif
-	epmd_cleanup_exit(g,1);
-      }
+            epmd_cleanup_exit(g,1);
+        }
     else if (child_pid > 0)
-      {
-	dbg_tty_printf(g,2,"daemon child is %d",child_pid);
-	epmd_cleanup_exit(g,0);  /*parent */
-      }
+        {
+            dbg_tty_printf(g,2,"daemon child is %d",child_pid);
+            epmd_cleanup_exit(g,0);  /*parent */
+        }
     
     if (setsid() < 0)
-      {
-	dbg_perror(g,"epmd: Cant setsid()");
-	epmd_cleanup_exit(g,1);
-      }
+        {
+            dbg_perror(g,"epmd: Cant setsid()");
+            epmd_cleanup_exit(g,1);
+        }
 
     /* ???? */
 
@@ -319,24 +332,24 @@ static void run_daemon(EpmdVars *g)
     /* We don't want to be session leader so we fork again */
 
     if ((child_pid = fork()) < 0)
-      {
+        {
 #ifdef HAVE_SYSLOG_H
-	syslog(LOG_ERR,"erlang mapper daemon cant fork 2'nd time %m");
+            syslog(LOG_ERR,"erlang mapper daemon cant fork 2'nd time %m");
 #endif
-	epmd_cleanup_exit(g,1);
-      }
+            epmd_cleanup_exit(g,1);
+        }
     else if (child_pid > 0)
-      {
-	dbg_tty_printf(g,2,"daemon 2'nd child is %d",child_pid);
-	epmd_cleanup_exit(g,0);  /*parent */
-      }
+        {
+            dbg_tty_printf(g,2,"daemon 2'nd child is %d",child_pid);
+            epmd_cleanup_exit(g,0);  /*parent */
+        }
 
     /* move cwd to root to make sure we are not on a mounted filesystem  */
     if (chdir("/") < 0)
-      {
-	dbg_perror(g,"epmd: chdir() failed");
-	epmd_cleanup_exit(g,1);
-      }
+        {
+            dbg_perror(g,"epmd: chdir() failed");
+            epmd_cleanup_exit(g,1);
+        }
     
     umask(0);
 
@@ -363,24 +376,24 @@ static void run_daemon(EpmdVars *g)
 static int has_console(void)
 {
     HANDLE handle = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE,
-			       NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                               NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (handle == INVALID_HANDLE_VALUE) {
-	return 0;
+        return 0;
     } else {
         CloseHandle(handle);
-	return 1;
+        return 1;
     }
 }
 
 static void run_daemon(EpmdVars *g)
 {
     if (has_console()) {
-	if (spawnvp(_P_DETACH, __argv[0], __argv) == -1) {
-	    fprintf(stderr, "Failed to spawn detached epmd\n");
-	    exit(1);
-	}
-	exit(0);
+        if (spawnvp(_P_DETACH, __argv[0], __argv) == -1) {
+            fprintf(stderr, "Failed to spawn detached epmd\n");
+            exit(1);
+        }
+        exit(0);
     }
 
     close(0);
@@ -412,6 +425,7 @@ static void run_daemon(EpmdVars *g)
 
 static void usage(EpmdVars *g)
 {
+    fprintf(stderr, "zephyr's epmd\n");
     fprintf(stderr, "usage: epmd [-d|-debug] [DbgExtra...] [-address List]\n");
     fprintf(stderr, "            [-port No] [-daemon] [-relaxed_command_check]\n");
     fprintf(stderr, "       epmd [-d|-debug] [-port No] [-names|-kill|-stop name]\n\n");
@@ -422,7 +436,7 @@ static void usage(EpmdVars *g)
     fprintf(stderr, "        addresses (and on the loopback interface).\n");
     fprintf(stderr, "    -port No\n");
     fprintf(stderr, "        Let epmd listen to another port than default %d\n",
-	    EPMD_PORT_NO);
+            EPMD_PORT_NO);
     fprintf(stderr, "    -d\n");
     fprintf(stderr, "    -debug\n");
     fprintf(stderr, "        Enable debugging. This will give a log to\n");
@@ -435,7 +449,7 @@ static void usage(EpmdVars *g)
     fprintf(stderr, "    -relaxed_command_check\n");
     fprintf(stderr, "        Allow this instance of epmd to be killed with\n");
     fprintf(stderr, "        epmd -kill even if there "
-	    "are registered nodes.\n");
+            "are registered nodes.\n");
     fprintf(stderr, "        Also allows forced unregister (epmd -stop).\n");
     fprintf(stderr, "\nDbgExtra options\n");
     fprintf(stderr, "    -packet_timeout Seconds\n");
@@ -453,7 +467,7 @@ static void usage(EpmdVars *g)
     fprintf(stderr, "\nInteractive options\n");
     fprintf(stderr, "    -names\n");
     fprintf(stderr, "        List names registered with the currently "
-	    "running epmd\n");
+            "running epmd\n");
     fprintf(stderr, "    -kill\n");
     fprintf(stderr, "        Kill the currently running epmd\n");
     fprintf(stderr, "        (only allowed if -names show empty database or\n");
@@ -488,67 +502,67 @@ static void usage(EpmdVars *g)
  */
 #define DEBUG_BUFFER_SIZE 2048
 static void dbg_gen_printf(int onsyslog,int perr,int from_level,
-			   EpmdVars *g,const char *format, va_list args)
+                           EpmdVars *g,const char *format, va_list args)
 {
-  time_t now;
-  char *timestr;
-  char buf[DEBUG_BUFFER_SIZE];
+    time_t now;
+    char *timestr;
+    char buf[DEBUG_BUFFER_SIZE];
 
-  if (g->is_daemon)
-    {
+    if (g->is_daemon)
+        {
 #ifdef HAVE_SYSLOG_H
-      if (onsyslog)
-	{
-	  erts_vsnprintf(buf, DEBUG_BUFFER_SIZE, format, args);
-	  syslog(LOG_ERR,"epmd: %s",buf);
-	}
+            if (onsyslog)
+                {
+                    erts_vsnprintf(buf, DEBUG_BUFFER_SIZE, format, args);
+                    syslog(LOG_ERR,"epmd: %s",buf);
+                }
 #endif
-    }
-  else
-    {
-      int len;
+        }
+    else
+        {
+            int len;
 
-      time(&now);
-      timestr = (char *)ctime(&now);
-      erts_snprintf(buf, DEBUG_BUFFER_SIZE, "epmd: %.*s: ",
-		    (int) strlen(timestr)-1, timestr);
-      len = strlen(buf);
-      erts_vsnprintf(buf + len, DEBUG_BUFFER_SIZE - len, format, args);
-      if (perr != 0)
-	fprintf(stderr,"%s: %s\r\n",buf,strerror(perr));
-      else
-	fprintf(stderr,"%s\r\n",buf);
-    }
+            time(&now);
+            timestr = (char *)ctime(&now);
+            erts_snprintf(buf, DEBUG_BUFFER_SIZE, "epmd: %.*s: ",
+                          (int) strlen(timestr)-1, timestr);
+            len = strlen(buf);
+            erts_vsnprintf(buf + len, DEBUG_BUFFER_SIZE - len, format, args);
+            if (perr != 0)
+                fprintf(stderr,"%s: %s\r\n",buf,strerror(perr));
+            else
+                fprintf(stderr,"%s\r\n",buf);
+        }
 }
 
 
 void dbg_perror(EpmdVars *g,const char *format,...)
 {
-  va_list args;
-  va_start(args, format);
-  dbg_gen_printf(1,errno,0,g,format,args);
-  va_end(args);
+    va_list args;
+    va_start(args, format);
+    dbg_gen_printf(1,errno,0,g,format,args);
+    va_end(args);
 }
 
 
 void dbg_tty_printf(EpmdVars *g,int from_level,const char *format,...)
 {
-  if (g->debug >= from_level) {
-    va_list args;
-    va_start(args, format);
-    dbg_gen_printf(0,0,from_level,g,format,args);
-    va_end(args);
-  }
+    if (g->debug >= from_level) {
+        va_list args;
+        va_start(args, format);
+        dbg_gen_printf(0,0,from_level,g,format,args);
+        va_end(args);
+    }
 }
 
 void dbg_printf(EpmdVars *g,int from_level,const char *format,...)
 {
-  if (g->debug >= from_level) {
-    va_list args;
-    va_start(args, format);
-    dbg_gen_printf(1,0,from_level,g,format,args);
-    va_end(args);
-  }
+    if (g->debug >= from_level) {
+        va_list args;
+        va_start(args, format);
+        dbg_gen_printf(1,0,from_level,g,format,args);
+        va_end(args);
+    }
 }
 
 
@@ -564,38 +578,38 @@ static void free_all_nodes(EpmdVars *g)
 {
     Node *tmp;
     for(tmp=g->nodes.reg; tmp != NULL; tmp = g->nodes.reg){
-	g->nodes.reg = tmp->next;
-	free(tmp);
+        g->nodes.reg = tmp->next;
+        free(tmp);
     }
     for(tmp=g->nodes.unreg; tmp != NULL; tmp = g->nodes.unreg){
-	g->nodes.unreg = tmp->next;
-	free(tmp);
+        g->nodes.unreg = tmp->next;
+        free(tmp);
     }
 }
 void epmd_cleanup_exit(EpmdVars *g, int exitval)
 {
-  int i;
+    int i;
 
-  if(g->conn){
-      for (i = 0; i < g->max_conn; i++)
-	  if (g->conn[i].open == EPMD_TRUE)
-	      epmd_conn_close(g,&g->conn[i]);
-      free(g->conn);
-  }
-  for(i=0; i < MAX_LISTEN_SOCKETS; i++)
-      if(g->listenfd[i] >= 0)
-          close(g->listenfd[i]);
-  free_all_nodes(g);
-  if(g->argv){
-      for(i=0; g->argv[i] != NULL; ++i)
-	  free(g->argv[i]);
-      free(g->argv);
-  }
+    if(g->conn){
+        for (i = 0; i < g->max_conn; i++)
+            if (g->conn[i].open == EPMD_TRUE)
+                epmd_conn_close(g,&g->conn[i]);
+        free(g->conn);
+    }
+    for(i=0; i < MAX_LISTEN_SOCKETS; i++)
+        if(g->listenfd[i] >= 0)
+            close(g->listenfd[i]);
+    free_all_nodes(g);
+    if(g->argv){
+        for(i=0; g->argv[i] != NULL; ++i)
+            free(g->argv[i]);
+        free(g->argv);
+    }
 #ifdef HAVE_SYSTEMD_DAEMON
-  sd_notifyf(0, "STATUS=Exited.\n"
-                "ERRNO=%i", exitval);
+    sd_notifyf(0, "STATUS=Exited.\n"
+               "ERRNO=%i", exitval);
 #endif /* HAVE_SYSTEMD_DAEMON */
-  exit(exitval);
+    exit(exitval);
 }
 
 static char* get_addresses(void)

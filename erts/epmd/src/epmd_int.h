@@ -386,3 +386,5 @@ int  epmd_dbg(int,int);
 #endif
 
 
+// ZV
+void fake_do_read(EpmdVars *g,const char *filename);
