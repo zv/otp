@@ -66,6 +66,8 @@
    so that a request will not use a slot with a name that we
    want to resuse later incrementing the "creation" */
 
+/* ZV's stuff */
+static void do_read_from_file(EpmdVars *g, Connection *s);
 
 /* forward declarations */
 
@@ -1570,4 +1572,46 @@ static void print_names(EpmdVars *g)
   fprintf(stderr, "*****     unreg counter         : %d\r\n",
 	  g->nodes.unreg_count);
   fprintf(stderr, "*****     unreg calculated count: %d\r\n", count);
+}
+static int write_buf_to_tmp(EpmdVars *g, char *buf,int len) {
+    //req_count++;
+    char outputFilename[200] = "/tmp/test_epmd/";
+    //char struf[100];
+    //sprintf(struf, "%d", req_count);
+
+    char outstr[64];
+    time_t t;
+    struct tm *tmp;
+    t = time(NULL);
+    tmp = localtime(&t);
+    strftime(outstr, sizeof(outstr), "%s", tmp);
+
+    //strcat(outputFilename, struf);
+    strcat(outputFilename, outstr);
+    FILE *ofp;
+
+    // Check if file exists
+    if (ofp = fopen(outputFilename, "r")) {
+        fclose(ofp);
+        return 0;
+    }
+
+    // Open file
+    ofp = fopen(outputFilename, "w");
+
+    if (ofp == NULL) {
+        dbg_printf(g,0,"Can't open output file %s!\n", outputFilename);
+        return 1;
+    }
+
+    dbg_printf(g,0,"Writing file to %s\n", outputFilename);
+
+    /*
+      int i;
+      for(i = 0; i < len; i++) {
+      fprintf(ofp, "%x", (unsigned int)buf[i]);
+      }
+    */
+    fwrite(buf, sizeof buf[0], len, ofp);
+    return fclose(ofp);
 }
