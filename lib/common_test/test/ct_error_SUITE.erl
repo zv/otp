@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2009-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2009-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -728,23 +728,25 @@ test_events(lib_error) ->
       {lib_error_1_SUITE,no_lines_throw,{failed,{error,{thrown,catch_me_if_u_can}}}}},
      {?eh,test_stats,{0,8,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,init_tc_error}},
-     {?eh,tc_done,{lib_error_1_SUITE,init_tc_error,ok}},
-     {?eh,test_stats,{1,8,{0,0}}},
+     {?eh,tc_done,{ct_framework,init_tc,
+         {framework_error,{{badmatch,[1,2]},'_'}}}},
+     {?eh,test_stats,{0,9,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,init_tc_exit}},
-     {?eh,tc_done,{lib_error_1_SUITE,init_tc_exit,ok}},
-     {?eh,test_stats,{2,8,{0,0}}},
+     {?eh,tc_done,{ct_framework,init_tc,{framework_error,byebye}}},
+     {?eh,test_stats,{0,10,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,init_tc_throw}},
-     {?eh,tc_done,{lib_error_1_SUITE,init_tc_throw,ok}},
-     {?eh,test_stats,{3,8,{0,0}}},
+     {?eh,tc_done,{ct_framework,init_tc,{framework_error,catch_me_if_u_can}}},
+     {?eh,test_stats,{0,11,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,end_tc_error}},
-     {?eh,tc_done,{lib_error_1_SUITE,end_tc_error,ok}},
-     {?eh,test_stats,{3,9,{0,0}}},
+     {?eh,tc_done,{ct_framework,end_tc,
+		   {framework_error,{{badmatch,[1,2]},'_'}}}},
+     {?eh,test_stats,{0,12,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,end_tc_exit}},
-     {?eh,tc_done,{lib_error_1_SUITE,end_tc_exit,ok}},
-     {?eh,test_stats,{3,10,{0,0}}},
+     {?eh,tc_done,{ct_framework,end_tc,{framework_error,byebye}}},
+     {?eh,test_stats,{0,13,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,end_tc_throw}},
-     {?eh,tc_done,{lib_error_1_SUITE,end_tc_throw,ok}},
-     {?eh,test_stats,{3,11,{0,0}}},
+     {?eh,tc_done,{ct_framework,end_tc,{framework_error,catch_me_if_u_can}}},
+     {?eh,test_stats,{0,14,{0,0}}},
      {?eh,tc_start,{lib_error_1_SUITE,end_per_suite}},
      {?eh,tc_done,{lib_error_1_SUITE,end_per_suite,ok}},
      {?eh,test_done,{'DEF','STOP_TIME'}},

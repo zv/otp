@@ -4,7 +4,7 @@
 <erlref>
   <header>
     <copyright>
-      <year>1996</year><year>2014</year>
+      <year>1996</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -2356,7 +2356,6 @@ mnesia:create_table(employee,
       <name>table(Tab [,[Option]]) -> QueryHandle</name>
       <fsummary>Return a QLC query handle.</fsummary>
       <desc>
-      <marker id="qlc_table"></marker>
       <marker id="table"></marker>
         <p>Returns a Query List Comprehension (QLC) query handle,
           see the <seealso marker="stdlib:qlc">qlc(3)</seealso>

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2003-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -1490,6 +1490,9 @@ get_portinfo(Fd,Port) ->
 	    get_portinfo(Fd,Port#port{monitors=Monitors});
 	"Port controls linked-in driver" ->
 	    Str = lists:flatten(["Linked in driver: " | val(Fd)]),
+	    get_portinfo(Fd,Port#port{controls=Str});
+	"Port controls forker process" ->
+	    Str = lists:flatten(["Forker process: " | val(Fd)]),
 	    get_portinfo(Fd,Port#port{controls=Str});
 	"Port controls external process" ->
 	    Str = lists:flatten(["External proc: " | val(Fd)]),

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2008-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2008-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ end_per_testcase(Func,Config) ->
     wx_test_lib:end_per_testcase(Func,Config).
 
 %% SUITE specification
-suite() -> [{ct_hooks,[ts_install_cth]}].
+suite() -> [{ct_hooks,[ts_install_cth]}, {timetrap,{minutes,2}}].
 
 all() -> 
     [silent_start, create_window, several_apps, wx_api, wx_misc,
@@ -192,7 +192,9 @@ wx_api(Config) ->
     ?m(ok,wxButton:setLabel(Temp, "Testing")),
     ?m(ok,wxButton:destroy(Temp)),
     ?m({'EXIT',_},wxButton:getLabel(Temp)),
-    
+    ?m(ok,wxButton:setLabel(Temp, "Testing")), %% Should generate an error report
+    ?m({'EXIT',_},wxButton:getLabel(Temp)),
+
     case wx_test_lib:user_available(Config) of
 	true -> 	    
 	    %% Hmm popup doesn't return until mouse is pressed.
@@ -338,6 +340,20 @@ data_types(_Config) ->
     ?m(true, is_boolean(wxCalendarCtrl:setDate(Cal,DateTime))),
     ?m({Date,_}, wxCalendarCtrl:getDate(Cal)),
 
+    %% Images, test sending and reading binaries
+    Colors = << <<200:8, 199:8, 198:8 >> || _ <- lists:seq(1, 128*64) >>,
+    Alpha  = << <<255:8>> || _ <- lists:seq(1, 128*64) >>,
+    ImgRGB = ?mt(wxImage, wxImage:new(128, 64, Colors)),
+    ?m(true, wxImage:ok(ImgRGB)),
+    ?m(false, wxImage:hasAlpha(ImgRGB)),
+    ?m(ok, case wxImage:getData(ImgRGB) of Colors -> ok; Other -> Other end),
+
+    ImgRGBA = ?mt(wxImage, wxImage:new(128, 64, Colors, Alpha)),
+    ?m(true, wxImage:ok(ImgRGBA)),
+    ?m(true, wxImage:hasAlpha(ImgRGBA)),
+    ?m(ok, case wxImage:getData(ImgRGBA) of Colors -> ok; Other -> Other end),
+    ?m(ok, case wxImage:getAlpha(ImgRGBA) of Alpha -> ok; Other -> Other end),
+
     wxClientDC:destroy(CDC),
     %%wx_test_lib:wx_destroy(Frame,Config).
     wx:destroy().
@@ -347,7 +363,8 @@ wx_object(Config) ->
     wx:new(),
     Me = self(),
     Init = fun() ->
-		   Frame = wxFrame:new(wx:null(), ?wxID_ANY, "Test wx_object", [{size, {500, 400}}]),
+		   Frame0 = wxFrame:new(wx:null(), ?wxID_ANY, "Test wx_object", [{size, {500, 400}}]),
+		   Frame = wx_object:set_pid(Frame0, self()),
 		   Sz = wxBoxSizer:new(?wxHORIZONTAL),
 		   Panel = wxPanel:new(Frame),
 		   wxSizer:add(Sz, Panel, [{flag, ?wxEXPAND}, {proportion, 1}]),
@@ -357,6 +374,7 @@ wx_object(Config) ->
 		   {Frame, {Frame, Panel}}
 	   end,
     Frame = ?mt(wxFrame, wx_obj_test:start([{init, Init}])),
+
     timer:sleep(500),
     ?m(ok, check_events(flush())),
 
@@ -364,6 +382,11 @@ wx_object(Config) ->
     ?m({call, foobar, {Me, _}}, wx_object:call(Frame, foobar)),
     ?m(ok, wx_object:cast(Frame, foobar2)),
     ?m([{cast, foobar2}|_], flush()),
+
+    ?m(Frame, wx_obj_test:who_are_you(Frame)),
+    {call, {Frame,Panel}, _} = wx_object:call(Frame, fun(US) -> US end),
+    ?m(false, wxWindow:getParent(Panel) =:= Frame),
+    ?m(true, wx:equal(wxWindow:getParent(Panel),Frame)),
     FramePid = wx_object:get_pid(Frame),
     io:format("wx_object pid ~p~n",[FramePid]),
     FramePid ! foo3,

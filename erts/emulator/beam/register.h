@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  * 
- * Copyright Ericsson AB 1996-2012. All Rights Reserved.
+ * Copyright Ericsson AB 1996-2016. All Rights Reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ int erts_register_name(Process *, Eterm, Eterm);
 Eterm erts_whereis_name_to_id(Process *, Eterm);
 void erts_whereis_name(Process *, ErtsProcLocks,
 		       Eterm, Process**, ErtsProcLocks, int,
-		       Port**);
+		       Port**, int);
 Process *erts_whereis_process(Process *,
 			      ErtsProcLocks,
 			      Eterm,

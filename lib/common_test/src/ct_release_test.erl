@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2014-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2014-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -131,7 +131,7 @@
 -include_lib("kernel/include/file.hrl").
 
 %%-----------------------------------------------------------------
--define(testnode, otp_upgrade).
+-define(testnode, 'ct_release_test-upgrade').
 -define(exclude_apps, [hipe, typer, dialyzer]). % never include these apps
 
 %%-----------------------------------------------------------------
@@ -304,7 +304,13 @@ upgrade(Apps,Level,Callback,Config) ->
 	%% Note, we will not reach this if the test fails with a
 	%% timetrap timeout in the test suite! Thus we can have
 	%% hanging nodes...
-	Nodes = nodes(),
+	Nodes = lists:filter(fun(Node) ->
+				     case atom_to_list(Node) of
+					 "ct_release_test-" ++_ -> true;
+					 _ -> false
+				     end
+			     end,
+			     nodes()),
 	[rpc:call(Node,erlang,halt,[]) || Node <- Nodes]
     end.
 
@@ -328,8 +334,15 @@ upgrade(Apps,Level,Callback,Config) ->
 %%     ct_release_test:cleanup(Config).'''
 %%
 cleanup(Config) ->
-    Nodes = [node_name(?testnode)|nodes()],
-    [rpc:call(Node,erlang,halt,[]) || Node <- Nodes],
+    AllNodes = [node_name(?testnode)|nodes()],
+    Nodes = lists:filter(fun(Node) ->
+				 case atom_to_list(Node) of
+				     "ct_release_test-" ++_ -> true;
+				     _ -> false
+				 end
+			 end,
+			 AllNodes),
+    _ = [rpc:call(Node,erlang,halt,[]) || Node <- Nodes],
     Config.
 
 %%-----------------------------------------------------------------
@@ -455,9 +468,9 @@ get_rels(minor) ->
     {CurrentMajor,Current}.
 
 init_upgrade_test(FromVsn,ToVsn,OldRel) ->
-    OtpRel = list_to_atom("otp-"++FromVsn),
+    Name = list_to_atom("ct_release_test-otp-"++FromVsn),
     ct:log("Starting node to fetch application versions to upgrade from"),
-    {ok,Node} = test_server:start_node(OtpRel,peer,[{erl,[OldRel]}]),
+    {ok,Node} = test_server:start_node(Name,peer,[{erl,[OldRel]}]),
     {Apps,Path} = fetch_all_apps(Node),
     test_server:stop_node(Node),
     {FromVsn,ToVsn,Apps,Path}.
@@ -539,14 +552,14 @@ target_system(Apps,CreateDir,InstallDir,{FromVsn,_,AllAppsVsns,Path}) ->
 
     %% Add bin and log dirs
     BinDir = filename:join([InstallDir, "bin"]),
-    file:make_dir(BinDir),
-    file:make_dir(filename:join(InstallDir,"log")),
+    ok = make_dir(BinDir),
+    ok = make_dir(filename:join(InstallDir,"log")),
 
     %% Delete start scripts - they will be added later
     ErtsBinDir = filename:join([InstallDir, "erts-" ++ ErtsVsn, "bin"]),
-    file:delete(filename:join([ErtsBinDir, "erl"])),
-    file:delete(filename:join([ErtsBinDir, "start"])),
-    file:delete(filename:join([ErtsBinDir, "start_erl"])),
+    ok = delete_file(filename:join([ErtsBinDir, "erl"])),
+    ok = delete_file(filename:join([ErtsBinDir, "start"])),
+    ok = delete_file(filename:join([ErtsBinDir, "start_erl"])),
 
     %% Copy .boot to bin/start.boot
     copy_file(RelName++".boot",filename:join([BinDir, "start.boot"])),
@@ -642,10 +655,6 @@ do_upgrade({Cb,InitState},FromVsn,FromAppsVsns,ToRel,ToAppsVsns,InstallDir) ->
     Start = filename:join([InstallDir,bin,start]),
     {ok,Node} = start_node(Start,FromVsn,FromAppsVsns),
 
-    %% Add path to this module, to allow calls to get_appup/2
-    Dir = filename:dirname(code:which(?MODULE)),
-    _ = rpc:call(Node,code,add_pathz,[Dir]),
-
     ct:log("Node started: ~p",[Node]),
     CtData = #ct_data{from = [{A,V,code:lib_dir(A)} || {A,V} <- FromAppsVsns],
 		      to=[{A,V,code:lib_dir(A)} || {A,V} <- ToAppsVsns]},
@@ -671,7 +680,7 @@ do_upgrade({Cb,InitState},FromVsn,FromAppsVsns,ToRel,ToAppsVsns,InstallDir) ->
     %% even if install_release returned {ok,...} there might be an
     %% emulator restart (instruction restart_emulator), so we must
     %% always make sure the node is running.
-    wait_node_up(current,ToVsn,ToAppsVsns),
+    {ok, _} = wait_node_up(current,ToVsn,ToAppsVsns),
 
     [{"OTP upgrade test",ToVsn,_,current},
      {"OTP upgrade test",FromVsn,_,permanent}] =
@@ -694,7 +703,7 @@ do_upgrade({Cb,InitState},FromVsn,FromAppsVsns,ToRel,ToAppsVsns,InstallDir) ->
     %% even if install_release returned {ok,...} there might be an
     %% emulator restart (instruction restart_emulator), so we must
     %% always make sure the node is running.
-    wait_node_up(current,FromVsn,FromAppsVsns),
+    {ok, _} = wait_node_up(current,FromVsn,FromAppsVsns),
 
     [{"OTP upgrade test",ToVsn,_,permanent},
      {"OTP upgrade test",FromVsn,_,current}] =
@@ -723,7 +732,7 @@ do_callback(Node,Mod,Func,Args) ->
     ct:log("~p:~p/~w returned: ~p",[Mod,Func,length(Args),R]),
     case R of
 	{badrpc,Error} ->
-	    test_server:fail({test_upgrade_callback,Mod,Func,Args,Error});
+	    throw({fail,{test_upgrade_callback,Mod,Func,Args,Error}});
 	NewState ->
 	    NewState
     end.
@@ -753,7 +762,7 @@ create_relfile(AppsVsns,CreateDir,RelName0,RelVsn) ->
     %% Should test tools really be included? Some library functions
     %% here could be used by callback, but not everything since
     %% processes of these applications will not be running.
-    TestToolAppsVsns0 = get_vsns([test_server,common_test]),
+    TestToolAppsVsns0 = get_vsns([common_test]),
     TestToolAppsVsns =
 	[{A,V,none} || {A,V} <- TestToolAppsVsns0,
 		       false == lists:keymember(A,1,AllAppsVsns0)],
@@ -845,7 +854,7 @@ copy_file(Src, Dest, Opts) ->
     case lists:member(preserve, Opts) of
         true ->
             {ok, FileInfo} = file:read_file_info(Src),
-            file:write_file_info(Dest, FileInfo);
+            ok = file:write_file_info(Dest, FileInfo);
         false ->
             ok
     end.
@@ -853,8 +862,8 @@ copy_file(Src, Dest, Opts) ->
 write_file(FName, Conts) ->
     Enc = file:native_name_encoding(),
     {ok, Fd} = file:open(FName, [write]),
-    file:write(Fd, unicode:characters_to_binary(Conts,Enc,Enc)),
-    file:close(Fd).
+    ok = file:write(Fd, unicode:characters_to_binary(Conts,Enc,Enc)),
+    ok = file:close(Fd).
 
 %% Substitute all occurrences of %Var% for Val in the given scripts
 subst_src_scripts(Scripts, SrcDir, DestDir, Vars, Opts) ->
@@ -934,4 +943,20 @@ rm_rf(Dir) ->
 	    ok=file:delete(Dir);
 	_ ->
 	    ok
+    end.
+
+delete_file(FileName) ->
+    case file:delete(FileName) of
+        {error, enoent} ->
+            ok;
+        Else ->
+            Else
+    end.
+
+make_dir(Dir) ->
+    case file:make_dir(Dir) of
+        {error, eexist} ->
+            ok;
+        Else ->
+            Else
     end.

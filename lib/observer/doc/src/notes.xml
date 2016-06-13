@@ -4,7 +4,7 @@
 <chapter>
   <header>
     <copyright>
-      <year>2004</year><year>2013</year>
+      <year>2004</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -31,6 +31,21 @@
   </header>
   <p>This document describes the changes made to the Observer
     application.</p>
+
+<section><title>Observer 2.1.2</title>
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+          <p>
+	    Documentation corrections.</p>
+          <p>
+	    Own Id: OTP-12994</p>
+        </item>
+      </list>
+    </section>
+
+</section>
 
 <section><title>Observer 2.1.1</title>
 

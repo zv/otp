@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2008-2014. All Rights Reserved.
+ * Copyright Ericsson AB 2008-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -241,12 +241,10 @@ standard_outputv(ErlDrvData drv_data, ErlIOVec* ev)
       bin = ev->binv[1];
       driver_binary_inc_refc(bin); /* Otherwise it could get deallocated */
       binref->bin = bin;
-      sd->bin = binref;
    } else { /* Empty binary (becomes NULL) */
       binref->base = NULL;
       binref->size = 0;
       binref->from = driver_caller(sd->port_handle);
       binref->bin = NULL;
-      sd->bin = binref;
    }
 }

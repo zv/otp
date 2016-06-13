@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2003-2011. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -286,13 +286,13 @@ strip_ws(T) ->
     T.
 
 
-special_token('@') -> true;
+%% special_token('@') -> true;
 special_token('::') -> true;
 special_token(',') -> true;
 special_token('(') -> true;
 special_token('[') -> true;
 special_token('/') -> true;
-special_token('//') -> true;
+%% special_token('//') -> true;
 special_token('|') -> true;
 special_token('+') -> true;
 special_token('-') -> true;
@@ -306,5 +306,4 @@ special_token('and') -> true;
 special_token('or') -> true;
 special_token('mod') -> true;
 special_token('div') -> true;
-special_token(_) ->
-    false.
+special_token(_) -> false.

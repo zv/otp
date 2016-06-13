@@ -1,7 +1,7 @@
 %%--------------------------------------------------------------------
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2012-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2012-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -279,7 +279,7 @@ send({CM,Ch},Data) ->
 
 %%% Split into many small parts and send to client
 send_frag({CM,Ch},Data) ->
-    Sz = rand:uniform(2000),
+    Sz = rand:uniform(1000),
     case Data of
 	<<Chunk:Sz/binary,Rest/binary>> ->
 	    ssh_connection:send(CM, Ch, Chunk),

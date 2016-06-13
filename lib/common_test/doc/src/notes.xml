@@ -4,7 +4,7 @@
 <chapter>
   <header>
     <copyright>
-      <year>2004</year><year>2013</year>
+      <year>2004</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -32,6 +32,153 @@
     <rev>A</rev>
     <file>notes.xml</file>
     </header>
+
+<section><title>Common_Test 1.12.1</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    The <c>nodelay</c> option used to be enabled
+	    (<c>true</c>) by default for sockets opened by the Common
+	    Test telnet client. This appeared to cause communication
+	    problems with telnet servers on some systems, and
+	    therefore the option is no longer used. Its value may
+	    instead be specified in the telnet connection settings.
+	    See the man page for <c>ct_telnet</c> for details. Please
+	    note that the interface function <c>connect</c> in
+	    <c>unix_telnet</c> has been updated with an extra
+	    argument and is now <c>unix_telnet:connect/7</c>.</p>
+          <p>
+	    Own Id: OTP-13462 Aux Id: seq13077 </p>
+        </item>
+        <item>
+          <p>
+	    Fix bug in cth_surefire: When a pre_init_per_suite hook
+	    fails before reaching the
+	    cth_surefire:pre_init_per_suite, cth_surefire produced
+	    incorrect XML.</p>
+          <p>
+	    Own Id: OTP-13513</p>
+        </item>
+        <item>
+          <p>
+	    The <c>ct:get_timetrap_info/0</c> function has been
+	    updated to return more information about timetrap
+	    scaling.</p>
+          <p>
+	    Own Id: OTP-13535</p>
+        </item>
+        <item>
+          <p>
+	    A problem with stylesheet HTML tags getting incorrectly
+	    escaped by Common Test has been corrected.</p>
+          <p>
+	    Own Id: OTP-13536</p>
+        </item>
+        <item>
+          <p>
+	    The <c>ct_run</c> start flag <c>-no_esc_chars</c> and
+	    <c>ct:run_test/1</c> start option <c>{esc_chars,Bool}</c>
+	    have been introduced to make it possible to disable
+	    automatic escaping of characters. Automatic escaping of
+	    special HTML characters printed with <c>io:format/1,2</c>
+	    and <c>ct:pal/1,2,3,4</c> was introduced in Common Test
+	    1.12. The new flag/option may be used to disable this
+	    feature for backwards compatibility reasons. (The option
+	    is also supported in test specifications).</p>
+          <p>
+	    Own Id: OTP-13537</p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>Common_Test 1.12</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    This update fixes the problem with generic printouts in
+	    the html log file not having special characters escaped.
+	    Printouts made with <c>io:format/2</c> and
+	    <c>ct:pal/2</c> will now get special characters escaped
+	    automatically. Common Test will not attempt to escape
+	    characters printed with <c>ct:log/2</c> since it is
+	    assumed that the user may want to print html tagged data
+	    using this function. A new function, <c>ct:log/5</c>, has
+	    been added, which offers optional escaping of characters.
+	    The latter function may also be used to print text to the
+	    log without headers and CSS class wrapping (analogue to
+	    <c>io:format/2</c>).</p>
+          <p>
+	    Own Id: OTP-13003 Aux Id: seq13005 </p>
+        </item>
+        <item>
+          <p>
+	    Commit 4cf832f1ad163f5b25dd8a6f2d314c169c23c82f
+	    erroneously removed logging of open and close of netconf
+	    connections. This is now corrected.</p>
+          <p>
+	    Own Id: OTP-13386</p>
+        </item>
+        <item>
+          <p>
+	    The directory to which nodes started with
+	    <c>test_server:start_node/3</c> writes their
+	    erl_crash.dump is changed. The crashdumps were earlier
+	    written to the directory of test_server.beam, but in
+	    later versions of Microsoft Windows this is no longer
+	    writable (even for administrators). The framework
+	    (common_test) log directory is now used instead.</p>
+          <p>
+	    Own Id: OTP-13388</p>
+        </item>
+      </list>
+    </section>
+
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+          <p>
+	    This update makes it possible to specify multiple
+	    instances of the same group or test case in one test
+	    specification term in order to repeat execution. Example:
+	    <c>{groups, "./", my_SUITE, [my_group, my_group], {cases,
+	    all}}, or {cases, "./", my_SUITE, [my_tc, my_tc,
+	    my_tc]}.</c></p>
+          <p>
+	    Own Id: OTP-13241 Aux Id: seq12979 </p>
+        </item>
+        <item>
+          <p>
+	    Two new CT hook functions have been added:
+	    <c>post_init_per_testcase/4</c> and
+	    <c>pre_end_per_testcase/3</c>. With these hook functions,
+	    it is possible to perform arbitrary actions (including
+	    modifications of test execution, test state and results)
+	    immediately before and after the execution of the test
+	    case.</p>
+          <p>
+	    Own Id: OTP-13242 Aux Id: seq12991 </p>
+        </item>
+        <item>
+          <p>
+	    The <c>ct_netconfc</c> was earlier very restrictive as to
+	    which SSH options the user could set. This is now
+	    changed, and any SSH option is now allowed. The netconf
+	    client will simply pass on any option, which it does not
+	    recognize, to SSH.</p>
+          <p>
+	    Own Id: OTP-13338 Aux Id: seq13053,seq13069 </p>
+        </item>
+      </list>
+    </section>
+
+</section>
 
 <section><title>Common_Test 1.11.2</title>
 

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@
 -define(CLEAN_SESSION_DB, 60000).
 -define(CLEAN_CERT_DB, 500).
 -define(DEFAULT_MAX_SESSION_CACHE, 1000).
+-define(LOAD_MITIGATION, 10).
 
 %%====================================================================
 %% API
@@ -196,10 +197,12 @@ register_session(Port, Session) ->
 %%--------------------------------------------------------------------
 -spec invalidate_session(host(), inet:port_number(), #session{}) -> ok.
 invalidate_session(Host, Port, Session) ->
+    load_mitigation(),
     cast({invalidate_session, Host, Port, Session}).
 
 -spec invalidate_session(inet:port_number(), #session{}) -> ok.
 invalidate_session(Port, Session) ->
+    load_mitigation(),
     cast({invalidate_session, Port, Session}).
 
 -spec invalidate_pem(File::binary()) -> ok.
@@ -551,7 +554,7 @@ last_delay_timer({_,_}, TRef, {_, LastClient}) ->
 new_id(_, 0, _, _) ->
     <<>>;
 new_id(Port, Tries, Cache, CacheCb) ->
-    Id = crypto:rand_bytes(?NUM_OF_SESSION_ID_BYTES),
+    Id = ssl_cipher:random_bytes(?NUM_OF_SESSION_ID_BYTES),
     case CacheCb:lookup(Cache, {Port, Id}) of
 	undefined ->
 	    Now = erlang:monotonic_time(),
@@ -610,8 +613,8 @@ server_register_session(Port, Session, #state{session_cache_server_max = Max,
 
 do_register_session(Key, Session, Max, Pid, Cache, CacheCb) ->
     try CacheCb:size(Cache) of
-	N when N > Max  ->
-	  invalidate_session_cache(Pid, CacheCb, Cache);
+	Max ->
+	    invalidate_session_cache(Pid, CacheCb, Cache);
 	_ ->	
 	    CacheCb:update(Cache, Key, Session),
 	    Pid
@@ -719,3 +722,11 @@ invalidate_session_cache(undefined, CacheCb, Cache) ->
     start_session_validator(Cache, CacheCb, {invalidate_before, erlang:monotonic_time()}, undefined);
 invalidate_session_cache(Pid, _CacheCb, _Cache) ->
     Pid.
+
+load_mitigation() ->
+    MSec = rand:uniform(?LOAD_MITIGATION),
+    receive 
+    after 
+	MSec ->
+	    continue
+    end.

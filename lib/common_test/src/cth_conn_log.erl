@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2012-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2012-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -132,7 +132,7 @@ pre_init_per_testcase(TestCase,Config,CthState) ->
 				 [S,ct_logs:uri(L),filename:basename(L)])
 			       || {S,L} <- Ls] ++
 			      "</table>",
-			  io:format(Str,[]),
+			  ct:log(Str,[],[no_css]),
 			  {ConnMod,{LogType,Ls}};
 		      _ ->
 			  {ConnMod,{LogType,[]}}
@@ -170,7 +170,7 @@ post_end_per_testcase(TestCase,_Config,Return,CthState) ->
 	end,
     case ct_util:update_testdata(?MODULE, Update) of
 	deleted ->
-	    [ct_util:delete_testdata({?MODULE,ConnMod}) ||
+	    _ = [ct_util:delete_testdata({?MODULE,ConnMod}) ||
 		{ConnMod,_} <- CthState],
 	    error_logger:delete_report_handler(ct_conn_log_h);
 	{error,no_response} ->

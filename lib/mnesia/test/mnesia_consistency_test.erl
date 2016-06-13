@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1997-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -565,6 +565,7 @@ consistency_after_fallback_3_disc_only(Config) when is_list(Config) ->
     consistency_after_fallback(disc_only_copies, 3, Config).
 
 consistency_after_fallback(ReplicaType, NodeConfig, Config) ->
+    put(mnesia_test_verbose, true),
     %%?verbose("Starting consistency_after_fallback2 at ~p~n", [self()]),
     Delay = 5,
     Nodes = ?acquire_nodes(NodeConfig, [{tc_timeout, timer:minutes(10)} | Config]),
@@ -594,10 +595,11 @@ consistency_after_fallback(ReplicaType, NodeConfig, Config) ->
     ?match(ok, mnesia_tpcb:verify_tabs()),
     
     %% Stop and then start mnesia and check table consistency
-    %%?verbose("Restarting Mnesia~n", []),
+    ?verbose("Kill Mnesia~n", []),
     mnesia_test_lib:kill_mnesia(Nodes),
+    ?verbose("Start Mnesia~n", []),
     mnesia_test_lib:start_mnesia(Nodes,[account,branch,teller,history]),
-    
+    ?verbose("Verify tabs~n", []),
     ?match(ok, mnesia_tpcb:verify_tabs()),
     if 
 	ReplicaType == ram_copies ->
@@ -663,10 +665,10 @@ consistency_after_restore(ReplicaType, Op, Config) ->
     [lists:foreach(fun(E) -> ok = mnesia:dirty_write({Tab, E, 2}) end, NList) ||
 	Tab <- Tabs],
     
-    Pids1 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carA, Op]), ok} || _ <- lists:seq(1, 5)],
-    Pids2 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carB, Op]), ok} || _ <- lists:seq(1, 5)],
-    Pids3 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carC, Op]), ok} || _ <- lists:seq(1, 5)],
-    Pids4 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carD, Op]), ok} || _ <- lists:seq(1, 5)],
+    Pids1 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carA, Op]), carA} || _ <- lists:seq(1, 5)],
+    Pids2 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carB, Op]), carB} || _ <- lists:seq(1, 5)],
+    Pids3 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carC, Op]), carC} || _ <- lists:seq(1, 5)],
+    Pids4 = [{'EXIT', spawn_link(?MODULE, change_tab, [self(), carD, Op]), carD} || _ <- lists:seq(1, 5)],
     
     AllPids = Pids1 ++ Pids2 ++ Pids3 ++ Pids4,
     
@@ -676,19 +678,38 @@ consistency_after_restore(ReplicaType, Op, Config) ->
 			  Else -> Else
 		      end
 	      end,
-    
+
     timer:sleep(timer:seconds(Delay)),  %% Let changers grab locks
     ?verbose("Doing restore~n", []),
     ?match(Tabs, Restore(File, [{default_op, Op}])),
 
-    timer:sleep(timer:seconds(Delay)),  %% Let em die
+    Collect = fun(Msg, Acc) ->
+		      receive Msg -> Acc
+		      after 10000 -> [Msg|Acc]
+		      end
+	      end,
 
-    ?match_multi_receive(AllPids),
+    Failed1 = lists:foldl(Collect, [], AllPids),
+    Failed  = lists:foldl(Collect, [], Failed1),
 
-    case ?match(ok, restore_verify_tabs(Tabs)) of 
-	{success, ok} -> 
+    case Failed of
+	[] -> ok;
+	_  ->
+	    ?match([], Failed),
+	    io:format("TIME: ~p sec~n", [erlang:system_time(seconds) band 16#FF]),
+	    Dbg = fun({_, Pid, Tab}) ->
+			  io:format("Tab ~p: ~p~n",[Tab, process_info(Pid, current_stacktrace)]),
+			  [io:format(" ~p~n", [Rec]) || Rec <- mnesia:dirty_match_object({Tab, '_', '_'})]
+		  end,
+	    [Dbg(Msg) || Msg <- Failed],
+	    io:format(" Held: ~p~n", [mnesia_locker:get_held_locks()]),
+	    io:format("Queue: ~p~n", [mnesia_locker:get_lock_queue()])
+    end,
+
+    case ?match(ok, restore_verify_tabs(Tabs)) of
+	{success, ok} ->
 	    file:delete(File);
-	_ -> 
+	_ ->
 	    {T, M, S} = time(),
 	    File2 = ?flat_format("consistency_error~w~w~w.BUP", [T, M, S]),
 	    file:rename(File, File2)
@@ -696,19 +717,22 @@ consistency_after_restore(ReplicaType, Op, Config) ->
     ?verify_mnesia(Nodes, []).
 
 change_tab(Father, Tab, Test) ->
-    Key = random:uniform(20),
+    Key = rand:uniform(20),
     Update = fun() ->
+		     Time = erlang:system_time(seconds) band 16#FF,
+		     case put(time, Time) of
+			 Time -> ok;
+			 _ -> io:format("~p ~p ~p sec~n", [self(), Tab, Time])
+		     end,
 		     case mnesia:read({Tab, Key}) of
-			 [{Tab, Key, 1}] -> 
-			     quit;
-			 [{Tab, Key, _N}] ->				       
-			     mnesia:write({Tab, Key, 3})
+			 [{Tab, Key, 1}] ->  quit;
+			 [{Tab, Key, _N}] -> mnesia:write({Tab, Key, 3})
 		     end
 	     end,
     case mnesia:transaction(Update) of
 	{atomic, quit} ->
-	    exit(ok);
-	{aborted, {no_exists, Tab}} when Test == recreate_tables ->%% I'll allow this 
+	    exit(Tab);
+	{aborted, {no_exists, Tab}} when Test == recreate_tables -> %% I'll allow this
 	    change_tab(Father, Tab, Test);
 	{atomic, ok} ->
 	    change_tab(Father, Tab, Test)

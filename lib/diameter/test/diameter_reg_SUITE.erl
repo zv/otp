@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010-2012. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -33,8 +33,7 @@
 %% testcases
 -export([add/1,
          add_new/1,
-         del/1,
-         repl/1,
+         remove/1,
          terms/1,
          pids/1]).
 
@@ -56,8 +55,7 @@ groups() ->
 tc() ->
     [add,
      add_new,
-     del,
-     repl,
+     remove,
      terms,
      pids].
 
@@ -82,20 +80,11 @@ add_new(_) ->
     true = ?reg:add_new(Ref),
     false = ?reg:add_new(Ref).
 
-del(_) ->
+remove(_) ->
     Ref = make_ref(),
     true = ?reg:add_new(Ref),
     true = ?reg:add_new({Ref}),
-    true = ?reg:del({Ref}),
-    [{Ref, Pid}] = ?reg:match(Ref),
-    Pid = self().
-
-repl(_) ->
-    Ref = make_ref(),
-    true = ?reg:add_new({Ref}),
-    true = ?reg:repl({Ref}, Ref),
-    false = ?reg:add_new(Ref),
-    false = ?reg:repl({Ref}, Ref),
+    true = ?reg:remove({Ref}),
     [{Ref, Pid}] = ?reg:match(Ref),
     Pid = self().
 

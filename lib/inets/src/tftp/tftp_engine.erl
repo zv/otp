@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2005-2009. All Rights Reserved.
+%% Copyright Ericsson AB 2005-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -63,7 +63,8 @@
 -record(file_info, {peer_req, pid}).
 -record(sys_misc, {module, function, arguments}).
 -record(error, {where, code, text, filename}).
--record(prepared, {status :: prep_status(), result, block_no, next_data, prev_data}).
+-record(prepared, {status :: prep_status() | 'undefined',
+                   result, block_no, next_data, prev_data}).
 -record(transfer_res, {status, decoded_msg, prepared}).
 -define(ERROR(Where, Code, Text, Filename),
         #error{where = Where, code = Code, text = Text, filename = Filename}).
@@ -656,22 +657,11 @@ common_read(Config, Callback, Req, _LocalAccess, ExpectedBlockNo, ActualBlockNo,
 
 do_common_read(Config, Callback, Req, LocalAccess, BlockNo, Data, Prepared)
   when is_binary(Data), is_record(Prepared, prepared) ->
-    NextBlockNo = BlockNo + 1,
-    case NextBlockNo =< 65535 of
-        true ->
-            Reply = #tftp_msg_data{block_no = NextBlockNo, data = Data},
-            {Config2, Callback2, TransferRes} =
-                transfer(Config, Callback, Req, Reply, LocalAccess, NextBlockNo, Prepared),
-            ?MODULE:common_loop(Config2, Callback2, Req, TransferRes, LocalAccess, NextBlockNo);
-        false ->
-            Code = badblk,
-            Text = "Too big transfer ID = " ++ 
-                integer_to_list(NextBlockNo) ++ " > 65535", 
-            {undefined, Error} =
-                callback({abort, {Code, Text}}, Config, Callback, Req),
-            send_msg(Config, Req, Error),
-            terminate(Config, Req, ?ERROR(read, Code, Text, Req#tftp_msg_req.filename))
-    end.
+    NextBlockNo = (BlockNo + 1) rem 65536,
+    Reply = #tftp_msg_data{block_no = NextBlockNo, data = Data},
+    {Config2, Callback2, TransferRes} =
+        transfer(Config, Callback, Req, Reply, LocalAccess, NextBlockNo, Prepared),
+    ?MODULE:common_loop(Config2, Callback2, Req, TransferRes, LocalAccess, NextBlockNo).
 
 -spec common_write(#config{}, #callback{}, _, 'write', integer(), integer(), _, #prepared{}) -> no_return().
 
@@ -715,21 +705,10 @@ common_write(Config, Callback, Req, _, ExpectedBlockNo, ActualBlockNo, Data, Pre
 common_ack(Config, Callback, Req, LocalAccess, BlockNo, Prepared) 
   when is_record(Prepared, prepared) ->
     Reply = #tftp_msg_ack{block_no = BlockNo},
-    NextBlockNo = BlockNo + 1,
+    NextBlockNo = (BlockNo + 1) rem 65536,
     {Config2, Callback2, TransferRes} = 
         transfer(Config, Callback, Req, Reply, LocalAccess, NextBlockNo, Prepared),
-    case NextBlockNo =< 65535 of
-        true ->   
-            ?MODULE:common_loop(Config2, Callback2, Req, TransferRes, LocalAccess, NextBlockNo);
-        false ->
-            Code = badblk,
-            Text = "Too big transfer ID = " ++ 
-                integer_to_list(NextBlockNo) ++ " > 65535", 
-            {undefined, Error} =
-                callback({abort, {Code, Text}}, Config, Callback2, Req),
-            send_msg(Config, Req, Error),
-            terminate(Config, Req, ?ERROR(read, Code, Text, Req#tftp_msg_req.filename))
-    end.
+    ?MODULE:common_loop(Config2, Callback2, Req, TransferRes, LocalAccess, NextBlockNo).
 
 pre_terminate(Config, Req, Result) ->
     if

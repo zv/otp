@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2003-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 -export([init_per_testcase/2, end_per_testcase/2]).
 
 -include_lib("common_test/include/ct.hrl").
--include("test_server_line.hrl").
 -include_lib("kernel/include/file.hrl").
 
 -define(failed_file,"failed-cases.txt").
@@ -102,7 +101,7 @@ end_per_group(_GroupName, Config) ->
 init_per_suite(Config) when is_list(Config) ->
     delete_saved(Config),
     DataDir = ?config(data_dir,Config),
-    Rels = [R || R <- [r16b,'17'], ?t:is_release_available(R)] ++ [current],
+    Rels = [R || R <- ['17','18'], ?t:is_release_available(R)] ++ [current],
     io:format("Creating crash dumps for the following releases: ~p", [Rels]),
     AllDumps = create_dumps(DataDir,Rels),
     [{dumps,AllDumps}|Config].
@@ -564,22 +563,11 @@ dump_with_strange_module_name(DataDir,Rel,DumpName) ->
     CD.
 
 dump(Node,DataDir,Rel,DumpName) ->
+    Crashdump = filename:join(DataDir, dump_prefix(Rel)++DumpName),
+    rpc:call(Node,os,putenv,["ERL_CRASH_DUMP",Crashdump]),
     rpc:call(Node,erlang,halt,[DumpName]),
-    Crashdump0 = filename:join(filename:dirname(code:which(?t)),
-			       "erl_crash_dump.n1"),
-    Crashdump1 = filename:join(DataDir, dump_prefix(Rel)++DumpName),
-    ok = rename(Crashdump0,Crashdump1),
-    Crashdump1.
-
-rename(From,To) ->
-    ok = check_complete(From),
-    case file:rename(From,To) of
-	{error,exdev} ->
-	    {ok,_} = file:copy(From,To),
-	    ok = file:delete(From);
-	ok ->
-	    ok
-    end.
+    ok = check_complete(Crashdump),
+    Crashdump.
 
 check_complete(File) ->
     check_complete1(File,10).
@@ -618,21 +606,21 @@ dos_dump(DataDir,Rel,Dump) ->
 
 rel_opt(Rel) ->
     case Rel of
-	r16b -> [{erl,[{release,"r16b_latest"}]}];
 	'17' -> [{erl,[{release,"17_latest"}]}];
+	'18' -> [{erl,[{release,"18_latest"}]}];
 	current -> []
     end.
 
 dump_prefix(Rel) ->
     case Rel of
-	r16b -> "r16b_dump.";
 	'17' -> "r17_dump.";
-	current -> "r18_dump."
+	'18' -> "r18_dump.";
+	current -> "r19_dump."
     end.
 
 compat_rel(Rel) ->
     case Rel of
-	r16b -> "+R16 ";
 	'17' -> "+R17 ";
+	'18' -> "+R18 ";
 	current -> ""
     end.

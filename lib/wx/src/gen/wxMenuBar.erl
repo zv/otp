@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2008-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2008-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -36,10 +36,10 @@
   setLabelTop/3]).
 
 %% inherited exports
--export([cacheBestSize/2,captureMouse/1,center/1,center/2,centerOnParent/1,
-  centerOnParent/2,centre/1,centre/2,centreOnParent/1,centreOnParent/2,
-  clearBackground/1,clientToScreen/2,clientToScreen/3,close/1,close/2,
-  connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
+-export([cacheBestSize/2,canSetTransparent/1,captureMouse/1,center/1,center/2,
+  centerOnParent/1,centerOnParent/2,centre/1,centre/2,centreOnParent/1,
+  centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
+  close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
   findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,getBackgroundColour/1,
   getBackgroundStyle/1,getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,
@@ -51,24 +51,24 @@
   getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,getToolTip/1,
   getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,getWindowVariant/1,
   hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,hide/1,inheritAttributes/1,
-  initDialog/1,invalidateBestSize/1,isExposed/2,isExposed/3,isExposed/5,
-  isRetained/1,isShown/1,isTopLevel/1,layout/1,lineDown/1,lineUp/1,lower/1,
-  makeModal/1,makeModal/2,move/2,move/3,move/4,moveAfterInTabOrder/2,
-  moveBeforeInTabOrder/2,navigate/1,navigate/2,pageDown/1,pageUp/1,parent_class/1,
-  popEventHandler/1,popEventHandler/2,popupMenu/2,popupMenu/3,popupMenu/4,
-  raise/1,refresh/1,refresh/2,refreshRect/2,refreshRect/3,releaseMouse/1,
-  removeChild/2,reparent/2,screenToClient/1,screenToClient/2,scrollLines/2,
-  scrollPages/2,scrollWindow/3,scrollWindow/4,setAcceleratorTable/2,
-  setAutoLayout/2,setBackgroundColour/2,setBackgroundStyle/2,setCaret/2,
-  setClientSize/2,setClientSize/3,setContainingSizer/2,setCursor/2,
-  setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,setFont/2,
-  setForegroundColour/2,setHelpText/2,setId/2,setMaxSize/2,setMinSize/2,
-  setName/2,setOwnBackgroundColour/2,setOwnFont/2,setOwnForegroundColour/2,
+  initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,isExposed/2,
+  isExposed/3,isExposed/5,isRetained/1,isShown/1,isTopLevel/1,layout/1,
+  lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,move/3,move/4,
+  moveAfterInTabOrder/2,moveBeforeInTabOrder/2,navigate/1,navigate/2,
+  pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,popEventHandler/2,
+  popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,refresh/2,refreshRect/2,
+  refreshRect/3,releaseMouse/1,removeChild/2,reparent/2,screenToClient/1,
+  screenToClient/2,scrollLines/2,scrollPages/2,scrollWindow/3,scrollWindow/4,
+  setAcceleratorTable/2,setAutoLayout/2,setBackgroundColour/2,setBackgroundStyle/2,
+  setCaret/2,setClientSize/2,setClientSize/3,setContainingSizer/2,setCursor/2,
+  setDoubleBuffered/2,setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,
+  setFont/2,setForegroundColour/2,setHelpText/2,setId/2,setMaxSize/2,
+  setMinSize/2,setName/2,setOwnBackgroundColour/2,setOwnFont/2,setOwnForegroundColour/2,
   setPalette/2,setScrollPos/3,setScrollPos/4,setScrollbar/5,setScrollbar/6,
   setSize/2,setSize/3,setSize/5,setSize/6,setSizeHints/2,setSizeHints/3,
   setSizeHints/4,setSizer/2,setSizer/3,setSizerAndFit/2,setSizerAndFit/3,
-  setThemeEnabled/2,setToolTip/2,setVirtualSize/2,setVirtualSize/3,
-  setVirtualSizeHints/2,setVirtualSizeHints/3,setVirtualSizeHints/4,
+  setThemeEnabled/2,setToolTip/2,setTransparent/2,setVirtualSize/2,
+  setVirtualSize/3,setVirtualSizeHints/2,setVirtualSizeHints/3,setVirtualSizeHints/4,
   setWindowStyle/2,setWindowStyleFlag/2,setWindowVariant/2,shouldInheritColours/1,
   show/1,show/2,thaw/1,transferDataFromWindow/1,transferDataToWindow/1,
   update/1,updateWindowUI/1,updateWindowUI/2,validate/1,warpPointer/3]).
@@ -106,7 +106,7 @@ append(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=MenuT,ref=MenuRef},Title)
   <<ThisRef:32/?UI,MenuRef:32/?UI,(byte_size(Title_UC)):32/?UI,(Title_UC)/binary, 0:(((8- ((4+byte_size(Title_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarcheck">external documentation</a>.
--spec check(This, Itemid, Check) -> ok when
+-spec check(This, Itemid, Check) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), Check::boolean().
 check(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Check)
  when is_integer(Itemid),is_boolean(Check) ->
@@ -125,7 +125,7 @@ enable(This)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarenable">external documentation</a>.
 -spec enable(This, [Option]) -> boolean() when
 	This::wxMenuBar(),
-	Option :: {enable, boolean()}.
+	Option :: {'enable', boolean()}.
 enable(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxMenuBar),
@@ -136,7 +136,7 @@ enable(#wx_ref{type=ThisT,ref=ThisRef}, Options)
   <<ThisRef:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarenable">external documentation</a>.
--spec enable(This, Itemid, Enable) -> ok when
+-spec enable(This, Itemid, Enable) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), Enable::boolean().
 enable(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Enable)
  when is_integer(Itemid),is_boolean(Enable) ->
@@ -145,7 +145,7 @@ enable(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Enable)
   <<ThisRef:32/?UI,Itemid:32/?UI,(wxe_util:from_bool(Enable)):32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarenabletop">external documentation</a>.
--spec enableTop(This, Pos, Flag) -> ok when
+-spec enableTop(This, Pos, Flag) -> 'ok' when
 	This::wxMenuBar(), Pos::integer(), Flag::boolean().
 enableTop(#wx_ref{type=ThisT,ref=ThisRef},Pos,Flag)
  when is_integer(Pos),is_boolean(Flag) ->
@@ -293,7 +293,7 @@ replace(#wx_ref{type=ThisT,ref=ThisRef},Pos,#wx_ref{type=MenuT,ref=MenuRef},Titl
   <<ThisRef:32/?UI,Pos:32/?UI,MenuRef:32/?UI,(byte_size(Title_UC)):32/?UI,(Title_UC)/binary, 0:(((8- ((0+byte_size(Title_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsethelpstring">external documentation</a>.
--spec setHelpString(This, Itemid, HelpString) -> ok when
+-spec setHelpString(This, Itemid, HelpString) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), HelpString::unicode:chardata().
 setHelpString(#wx_ref{type=ThisT,ref=ThisRef},Itemid,HelpString)
  when is_integer(Itemid),is_list(HelpString) ->
@@ -303,7 +303,7 @@ setHelpString(#wx_ref{type=ThisT,ref=ThisRef},Itemid,HelpString)
   <<ThisRef:32/?UI,Itemid:32/?UI,(byte_size(HelpString_UC)):32/?UI,(HelpString_UC)/binary, 0:(((8- ((4+byte_size(HelpString_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsetlabel">external documentation</a>.
--spec setLabel(This, S) -> ok when
+-spec setLabel(This, S) -> 'ok' when
 	This::wxMenuBar(), S::unicode:chardata().
 setLabel(#wx_ref{type=ThisT,ref=ThisRef},S)
  when is_list(S) ->
@@ -313,7 +313,7 @@ setLabel(#wx_ref{type=ThisT,ref=ThisRef},S)
   <<ThisRef:32/?UI,(byte_size(S_UC)):32/?UI,(S_UC)/binary, 0:(((8- ((0+byte_size(S_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsetlabel">external documentation</a>.
--spec setLabel(This, Itemid, Label) -> ok when
+-spec setLabel(This, Itemid, Label) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), Label::unicode:chardata().
 setLabel(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Label)
  when is_integer(Itemid),is_list(Label) ->
@@ -323,7 +323,7 @@ setLabel(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Label)
   <<ThisRef:32/?UI,Itemid:32/?UI,(byte_size(Label_UC)):32/?UI,(Label_UC)/binary, 0:(((8- ((4+byte_size(Label_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsetlabeltop">external documentation</a>.
--spec setLabelTop(This, Pos, Label) -> ok when
+-spec setLabelTop(This, Pos, Label) -> 'ok' when
 	This::wxMenuBar(), Pos::integer(), Label::unicode:chardata().
 setLabelTop(#wx_ref{type=ThisT,ref=ThisRef},Pos,Label)
  when is_integer(Pos),is_list(Label) ->
@@ -333,12 +333,20 @@ setLabelTop(#wx_ref{type=ThisT,ref=ThisRef},Pos,Label)
   <<ThisRef:32/?UI,Pos:32/?UI,(byte_size(Label_UC)):32/?UI,(Label_UC)/binary, 0:(((8- ((4+byte_size(Label_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxMenuBar()) -> ok.
+-spec destroy(This::wxMenuBar()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxMenuBar),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
   ok.
  %% From wxWindow
+%% @hidden
+setDoubleBuffered(This,On) -> wxWindow:setDoubleBuffered(This,On).
+%% @hidden
+isDoubleBuffered(This) -> wxWindow:isDoubleBuffered(This).
+%% @hidden
+canSetTransparent(This) -> wxWindow:canSetTransparent(This).
+%% @hidden
+setTransparent(This,Alpha) -> wxWindow:setTransparent(This,Alpha).
 %% @hidden
 warpPointer(This,X,Y) -> wxWindow:warpPointer(This,X,Y).
 %% @hidden

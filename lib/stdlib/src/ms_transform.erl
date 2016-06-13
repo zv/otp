@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2002-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2002-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -224,8 +224,9 @@ transform_from_shell(Dialect, Clauses, BoundEnvironment) ->
 %% Called when translating during compiling
 %%
 
--spec parse_transform(Forms, Options) -> Forms when
-      Forms :: [erl_parse:abstract_form()],
+-spec parse_transform(Forms, Options) -> Forms2 when
+      Forms :: [erl_parse:abstract_form() | erl_parse:form_info()],
+      Forms2 :: [erl_parse:abstract_form() | erl_parse:form_info()],
       Options :: term().
 
 parse_transform(Forms, _Options) ->
@@ -307,14 +308,17 @@ cleanup_filename({Old,OldRec,OldWarnings}) ->
 
 add_record_definition({Name,FieldList}) ->
     {KeyList,_} = lists:foldl(
-		    fun({record_field,_,{atom,Line0,FieldName}},{L,C}) ->
-			    {[{FieldName,C,{atom,Line0,undefined}}|L],C+1};
-		       ({record_field,_,{atom,_,FieldName},Def},{L,C}) ->
-			    {[{FieldName,C,Def}|L],C+1}
-		    end,
+                    fun(F, {L,C}) -> {[record_field(F, C)|L],C+1} end,
 		    {[],2},
 		    FieldList),
     put_records([{Name,KeyList}|get_records()]).
+
+record_field({record_field,_,{atom,Line0,FieldName}}, C) ->
+    {FieldName,C,{atom,Line0,undefined}};
+record_field({record_field,_,{atom,_,FieldName},Def}, C) ->
+    {FieldName,C,Def};
+record_field({typed_record_field,Field,_Type}, C) ->
+    record_field(Field, C).
 
 forms([F0|Fs0]) ->
     F1 = form(F0),

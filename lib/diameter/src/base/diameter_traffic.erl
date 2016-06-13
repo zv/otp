@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2013-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2013-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@
 -export([make_recvdata/1,
          peer_up/1,
          peer_down/1,
-         failover/1,
          pending/1]).
 
 %% towards ?MODULE
@@ -231,7 +230,15 @@ pending(TPids) ->
 %% used to come through the service process but this avoids that
 %% becoming a bottleneck.
 
-receive_message(TPid, Pkt, Dict0, RecvData)
+receive_message(TPid, {Pkt, NPid}, Dict0, RecvData) ->
+    NPid ! {diameter, incoming(TPid, Pkt, Dict0, RecvData)};
+
+receive_message(TPid, Pkt, Dict0, RecvData) ->
+    incoming(TPid, Pkt, Dict0, RecvData).
+
+%% incoming/4
+
+incoming(TPid, Pkt, Dict0, RecvData)
   when is_pid(TPid) ->
     #diameter_packet{header = #diameter_header{is_request = R}} = Pkt,
     recv(R,
@@ -245,11 +252,18 @@ receive_message(TPid, Pkt, Dict0, RecvData)
 
 %% Incoming request ...
 recv(true, false, TPid, Pkt, Dict0, T) ->
-    spawn_request(TPid, Pkt, Dict0, T);
+    try
+        {request, spawn_request(TPid, Pkt, Dict0, T)}
+    catch
+        error: system_limit = E ->  %% discard
+            ?LOG(error, E),
+            discard
+    end;
 
 %% ... answer to known request ...
 recv(false, #request{ref = Ref, handler = Pid} = Req, _, Pkt, Dict0, _) ->
-    Pid ! {answer, Ref, Req, Dict0, Pkt};
+    Pid ! {answer, Ref, Req, Dict0, Pkt},
+    {answer, Pid};
 
 %% Note that failover could have happened prior to this message being
 %% received and triggering failback. That is, both a failover message
@@ -264,7 +278,7 @@ recv(false, #request{ref = Ref, handler = Pid} = Req, _, Pkt, Dict0, _) ->
 recv(false, false, TPid, Pkt, _, _) ->
     ?LOG(discarded, Pkt#diameter_packet.header),
     incr(TPid, {{unknown, 0}, recv, discarded}),
-    ok.
+    discard.
 
 %% spawn_request/4
 
@@ -274,12 +288,7 @@ spawn_request(TPid, Pkt, Dict0, RecvData) ->
     spawn_request(TPid, Pkt, Dict0, ?DEFAULT_SPAWN_OPTS, RecvData).
 
 spawn_request(TPid, Pkt, Dict0, Opts, RecvData) ->
-    try
-        spawn_opt(fun() -> recv_request(TPid, Pkt, Dict0, RecvData) end, Opts)
-    catch
-        error: system_limit = E ->  %% discard
-            ?LOG(error, E)
-    end.
+    spawn_opt(fun() -> recv_request(TPid, Pkt, Dict0, RecvData) end, Opts).
 
 %% ---------------------------------------------------------------------------
 %% recv_request/4
@@ -1566,6 +1575,8 @@ answer(Pkt,
        Req) ->
     a(Pkt, SvcName, ModX, AE, Req).
 
+-spec a(_, _, _) -> no_return().  %% silence dialyzer
+
 a(#diameter_packet{errors = Es}
   = Pkt,
   SvcName,
@@ -1814,7 +1825,7 @@ store_request(T, TPid) ->
     ets:member(?REQUEST_TABLE, TPid)
         orelse begin
                    {_Seqs, _Req, TRef} = T,
-                   (self() ! {failover, TRef})  %% failover/1 may have missed
+                   self() ! {failover, TRef}  %% failover/1 may have missed
                end.
 
 %% lookup_request/2
@@ -1864,7 +1875,7 @@ failover(TPid)
 %% notifications are sent here: store_request/2 sends the notification
 %% in that case.
 
-%% Failover as a consequence of request_peer_down/1: inform the
+%% Failover as a consequence of peer_down/1: inform the
 %% request process.
 failover({_, Req, TRef}) ->
     #request{handler = Pid,

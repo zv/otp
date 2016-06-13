@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010-2012. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -81,6 +81,14 @@ post_end_per_group(Group,Config,Return,State) ->
 pre_init_per_testcase(TC,Config,State) ->
     check_dirs(State,Config),
     empty_cth:pre_init_per_testcase(TC,Config,State).
+
+post_init_per_testcase(TC,Config,Return,State) ->
+    check_dirs(State,Config),
+    empty_cth:post_init_per_testcase(TC,Config,Return,State).
+
+pre_end_per_testcase(TC,Config,State) ->
+    check_dirs(State,Config),
+    empty_cth:pre_end_per_testcase(TC,Config,State).
 
 post_end_per_testcase(TC,Config,Return,State) ->
     check_dirs(State,Config),

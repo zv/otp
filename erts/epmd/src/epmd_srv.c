@@ -2,7 +2,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 1998-2013. All Rights Reserved.
+ * Copyright Ericsson AB 1998-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,6 @@
 
 #ifndef INADDR_NONE
 #  define INADDR_NONE 0xffffffff
-#endif
-
-#if defined(__OSE__)
-#  include "sys/ioctl.h"
-#  define sleep(x) delay(x*1000)
 #endif
 
 /*
@@ -343,7 +338,7 @@ void run(EpmdVars *g)
     }
 #endif /* HAVE_SYSTEMD_DAEMON */
 
-#if !defined(__WIN32__) && !defined(__OSE__)
+#if !defined(__WIN32__)
   /* We ignore the SIGPIPE signal that is raised when we call write
      twice on a socket closed by the other end. */
   signal(SIGPIPE, SIG_IGN);
@@ -388,7 +383,7 @@ void run(EpmdVars *g)
 	          epmd_cleanup_exit(g,1);
 	  }
 	}
-      g->listenfd[i] = listensock[i];
+      g->listenfd[bound++] = listensock[i];
 
 #if HAVE_DECL_IPV6_V6ONLY
       opt = 1;
@@ -447,8 +442,6 @@ void run(EpmdVars *g)
 	    }
 	}
 
-      bound++;
-
       if(listen(listensock[i], SOMAXCONN) < 0) {
           dbg_perror(g,"failed to listen on socket");
           epmd_cleanup_exit(g,1);
@@ -459,11 +452,14 @@ void run(EpmdVars *g)
       dbg_perror(g,"unable to bind any address");
       epmd_cleanup_exit(g,1);
   }
+  num_sockets = bound;
 #ifdef HAVE_SYSTEMD_DAEMON
     }
-    sd_notifyf(0, "READY=1\n"
-                  "STATUS=Processing port mapping requests...\n"
-                  "MAINPID=%lu", (unsigned long) getpid());
+    if (g->is_systemd) {
+      sd_notifyf(0, "READY=1\n"
+                    "STATUS=Processing port mapping requests...\n"
+                    "MAINPID=%lu", (unsigned long) getpid());
+    }
 #endif /* HAVE_SYSTEMD_DAEMON */
 
   dbg_tty_printf(g,2,"entering the main select() loop");
@@ -503,8 +499,8 @@ void run(EpmdVars *g)
 	}
 
 	for (i = 0; i < num_sockets; i++)
-	  if (FD_ISSET(listensock[i],&read_mask)) {
-	    if (do_accept(g, listensock[i]) && g->active_conn < g->max_conn) {
+	  if (FD_ISSET(g->listenfd[i],&read_mask)) {
+	    if (do_accept(g, g->listenfd[i]) && g->active_conn < g->max_conn) {
 	      /*
 	       * The accept() succeeded, and we have at least one file
 	       * descriptor still free, which means that another accept()

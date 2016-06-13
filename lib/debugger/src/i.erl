@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1998-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1998-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ ib(Module,Function,Arity) ->
 
 ib(Module,Function,Arity,Cond) ->
     Breaks1 = int:all_breaks(Module),
-    int:break_in(Module,Function,Arity),
+    ok = int:break_in(Module,Function,Arity),
     Breaks2 = int:all_breaks(Module),
     lists:foreach(fun({Mod,Line}) -> int:test_at_break(Mod,Line,Cond) end,
 		  Breaks2--Breaks1).

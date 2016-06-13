@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1997-2015. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 %%% Purpose:Stdlib application test suite.
 %%%-----------------------------------------------------------------
 -module(stdlib_SUITE).
--include_lib("test_server/include/test_server.hrl").
+-include_lib("common_test/include/ct.hrl").
 
 -compile(export_all).
 
@@ -31,10 +31,7 @@
 suite() -> [{ct_hooks,[ts_install_cth]}].
 
 all() -> 
-    [app_test, appup_test, assert_test, {group,upgrade}].
-
-groups() -> 
-    [{upgrade,[minor_upgrade,major_upgrade]}].
+    [app_test, appup_test, assert_test].
 
 init_per_suite(Config) ->
     Config.
@@ -42,13 +39,9 @@ init_per_suite(Config) ->
 end_per_suite(_Config) ->
     ok.
 
-init_per_group(upgrade, Config) ->
-    ct_release_test:init(Config);
 init_per_group(_GroupName, Config) ->
     Config.
 
-end_per_group(upgrade, Config) ->
-    ct_release_test:cleanup(Config);
 end_per_group(_GroupName, Config) ->
     Config.
 
@@ -58,15 +51,12 @@ init_per_testcase(_Case, Config) ->
 end_per_testcase(_Case, _Config) ->
     ok.
 
-%
-% Test cases starts here.
-%
-app_test(suite) ->
-    [];
-app_test(doc) ->
-    ["Application consistency test."];
+%%
+%% Test cases starts here.
+%%
+%% Application consistency test.
 app_test(Config) when is_list(Config) ->
-    ?t:app_test(stdlib),
+    test_server:app_test(stdlib),
     ok.
 
 %% Test that appup allows upgrade from/downgrade to a maximum of one
@@ -165,35 +155,10 @@ check_appup([],_,_) ->
     ok.
 
 
-minor_upgrade(Config) ->
-    ct_release_test:upgrade(stdlib,minor,{?MODULE,[]},Config).
-
-major_upgrade(Config) ->
-    ct_release_test:upgrade(stdlib,major,{?MODULE,[]},Config).
-
-%% Version numbers are checked by ct_release_test, so there is nothing
-%% more to check here...
-upgrade_init(CtData,State) ->
-    {ok,{FromVsn,ToVsn}} = ct_release_test:get_app_vsns(CtData,stdlib),
-    case ct_release_test:get_appup(CtData,stdlib) of
-	{ok,{FromVsn,ToVsn,[restart_new_emulator],[restart_new_emulator]}} ->
-	    io:format("Upgrade/downgrade ~p <--> ~p",[FromVsn,ToVsn]);
-	{error,{vsn_not_found,_}} when FromVsn==ToVsn ->
-	    io:format("No upgrade test for stdlib, same version")
-    end,
-    State.
-upgrade_upgraded(_CtData,State) ->
-    State.
-upgrade_downgraded(_CtData,State) ->
-    State.
-
-
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("stdlib/include/assert.hrl"). % test repeated inclusion
-assert_test(suite) ->
-    [];
-assert_test(doc) ->
-    ["Assert macros test."];
+
+%% Assert macros test.
 assert_test(_Config) ->
     ok = ?assert(true),
     {'EXIT',{{assert, _},_}} = (catch ?assert(false)),

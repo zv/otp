@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2006-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2006-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
 -export([run_on_node/2,run_on_node/3]).
 -export([run_test/1,run_test/2]).
 -export([get_event_mgr_ref/0]).
--export([basic_html/1]).
+-export([basic_html/1,esc_chars/1]).
 
 -export([abort/0,abort/1,progress/0]).
 
@@ -317,6 +317,16 @@ basic_html(Bool) ->
     ok.
 
 %%%-----------------------------------------------------------------
+%%% @spec esc_chars(Bool) -> ok
+%%%       Bool = true | false
+%%%
+%%% @doc If set to false, the ct_master logs will be written without
+%%%      special characters being escaped in the HTML logs.
+esc_chars(Bool) ->
+    application:set_env(common_test_master, esc_chars, Bool),
+    ok.
+
+%%%-----------------------------------------------------------------
 %%% MASTER, runs on central controlling node.
 %%%-----------------------------------------------------------------
 start_master(NodeOptsList) ->
@@ -366,7 +376,7 @@ init_master(Parent,NodeOptsList,EvHandlers,MasterLogDir,LogDirs,
     end,
 
     %% start master event manager and add default handler
-    ct_master_event:start_link(),
+    {ok, _}  = start_ct_master_event(),
     ct_master_event:add_handler(),
     %% add user handlers for master event manager
     Add = fun({H,Args}) ->
@@ -387,6 +397,14 @@ init_master(Parent,NodeOptsList,EvHandlers,MasterLogDir,LogDirs,
 	    ok
     end,
     init_master1(Parent,NodeOptsList,InitOptions,LogDirs).
+
+start_ct_master_event() ->
+    case ct_master_event:start_link() of
+        {error, {already_started, Pid}} ->
+            {ok, Pid};
+        Else ->
+            Else
+    end.
 
 init_master1(Parent,NodeOptsList,InitOptions,LogDirs) ->
     {Inaccessible,NodeOptsList1,InitOptions1} = init_nodes(NodeOptsList,
@@ -648,7 +666,7 @@ refresh_logs([D|Dirs],Refreshed) ->
 		    {ok,Cwd} = file:get_cwd(),
 		    case catch ct_run:refresh_logs(D) of
 			{'EXIT',Reason} ->
-			    file:set_cwd(Cwd),
+			    ok = file:set_cwd(Cwd),
 			    refresh_logs(Dirs,[{D,{error,Reason}}|Refreshed]);
 			Result -> 
 			    refresh_logs(Dirs,[{D,Result}|Refreshed])
@@ -691,7 +709,7 @@ init_node_ctrl(MasterPid,Cookie,Opts) ->
     end,
     
     %% start a local event manager
-    ct_event:start_link(),
+    {ok, _} = start_ct_event(),
     ct_event:add_handler([{master,MasterPid}]),
 
     %% log("Running test with options: ~p~n", [Opts]),
@@ -709,6 +727,14 @@ init_node_ctrl(MasterPid,Cookie,Opts) ->
 	pang ->
 	    io:format("Warning! Connection to master node ~w is lost. "
 		      "Can't report result!~n~n", [MasterNode])
+    end.
+
+start_ct_event() ->
+    case ct_event:start_link() of
+        {error, {already_started, Pid}} ->
+            {ok, Pid};
+        Else ->
+            Else
     end.
 
 %%%-----------------------------------------------------------------
@@ -768,7 +794,7 @@ reply(Result,To) ->
     ok.
 
 init_nodes(NodeOptions, InitOptions)->
-    ping_nodes(NodeOptions),
+    _ = ping_nodes(NodeOptions),
     start_nodes(InitOptions),
     eval_on_nodes(InitOptions),
     {Inaccessible, NodeOptions1}=ping_nodes(NodeOptions),

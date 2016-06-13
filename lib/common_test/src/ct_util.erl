@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2003-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -131,14 +131,14 @@ do_start(Parent, Mode, LogDir, Verbosity) ->
     create_table(?suite_table,#suite_data.key),
 
     create_table(?verbosity_table,1),
-    [ets:insert(?verbosity_table,{Cat,Lvl}) || {Cat,Lvl} <- Verbosity],
+    _ = [ets:insert(?verbosity_table,{Cat,Lvl}) || {Cat,Lvl} <- Verbosity],
 
     {ok,StartDir} = file:get_cwd(),
     case file:set_cwd(LogDir) of
 	ok -> ok;
 	E -> exit(E)
     end,
-    DoExit = fun(Reason) -> file:set_cwd(StartDir), exit(Reason) end,
+    DoExit = fun(Reason) -> ok = file:set_cwd(StartDir), exit(Reason) end,
     Opts = case read_opts() of
 	       {ok,Opts1} ->
 		   Opts1;
@@ -169,7 +169,7 @@ do_start(Parent, Mode, LogDir, Verbosity) ->
     end,
 
     %% add user event handlers
-    case lists:keysearch(event_handler,1,Opts) of
+    _ = case lists:keysearch(event_handler,1,Opts) of
 	{value,{_,Handlers}} ->
 	    Add = fun({H,Args}) ->
 			  case catch gen_event:add_handler(?CT_EVMGR_REF,H,Args) of
@@ -195,7 +195,7 @@ do_start(Parent, Mode, LogDir, Verbosity) ->
 			   data={StartTime,
 				 lists:flatten(TestLogDir)}}),
     %% Initialize ct_hooks
-    try ct_hooks:init(Opts) of
+    _ = try ct_hooks:init(Opts) of
 	ok ->
 	    Parent ! {self(),started};
 	{fail,CTHReason} ->
@@ -228,7 +228,8 @@ create_table(TableName,KeyPos) ->
     create_table(TableName,set,KeyPos).
 create_table(TableName,Type,KeyPos) ->
     catch ets:delete(TableName),
-    ets:new(TableName,[Type,named_table,public,{keypos,KeyPos}]).
+    _ = ets:new(TableName,[Type,named_table,public,{keypos,KeyPos}]),
+    ok.
 
 read_opts() ->
     case file:consult(ct_run:variables_file_name("./")) of
@@ -459,6 +460,7 @@ loop(Mode,TestData,StartDir) ->
 		    error:badarg -> []
 		end,
 	    ct_hooks:terminate(Callbacks),
+
 	    close_connections(ets:tab2list(?conn_table)),
 	    ets:delete(?conn_table),
 	    ets:delete(?board_table),
@@ -472,7 +474,7 @@ loop(Mode,TestData,StartDir) ->
 	    ct_logs:close(Info, StartDir),
 	    ct_event:stop(),
 	    ct_config:stop(),
-	    file:set_cwd(StartDir),
+	    ok = file:set_cwd(StartDir),
 	    return(From, Info);
 	{Ref, _Msg} when is_reference(Ref) ->
 	    %% This clause is used when doing cast operations.
@@ -485,6 +487,8 @@ loop(Mode,TestData,StartDir) ->
 	{'EXIT',Pid,Reason} ->
 	    case ets:lookup(?conn_table,Pid) of
 		[#conn{address=A,callback=CB}] ->
+		    ErrorStr = io_lib:format("~tp", [Reason]),
+		    ErrorHtml = ct_logs:escape_chars(ErrorStr),
 		    %% A connection crashed - remove the connection but don't die
 		    ct_logs:tc_log_async(ct_error_notify,
 					 ?MAX_IMPORTANCE,
@@ -492,8 +496,8 @@ loop(Mode,TestData,StartDir) ->
 					 "Connection process died: "
 					 "Pid: ~w, Address: ~p, "
 					 "Callback: ~w\n"
-					 "Reason: ~p\n\n",
-					 [Pid,A,CB,Reason]),
+					 "Reason: ~ts\n\n",
+					 [Pid,A,CB,ErrorHtml]),
 		    catch CB:close(Pid),
 		    %% in case CB:close failed to do this:
 		    unregister_connection(Pid),
@@ -502,7 +506,7 @@ loop(Mode,TestData,StartDir) ->
 		    %% Let process crash in case of error, this shouldn't happen!
 		    io:format("\n\nct_util_server got EXIT "
 			      "from ~w: ~p\n\n", [Pid,Reason]),
-		    file:set_cwd(StartDir),
+		    ok = file:set_cwd(StartDir),
 		    exit(Reason)
 	    end
     end.
@@ -1032,10 +1036,12 @@ call(Msg, Timeout) ->
     end.
 
 return({To,Ref},Result) ->
-    To ! {Ref, Result}.
+    To ! {Ref, Result},
+    ok.
 
 cast(Msg) ->
-    ct_util_server ! {Msg, {ct_util_server, make_ref()}}.
+    ct_util_server ! {Msg, {ct_util_server, make_ref()}},
+    ok.
 
 seconds(T) ->
     test_server:seconds(T).
@@ -1071,7 +1077,7 @@ abs_name2([],Acc) ->
 open_url(iexplore, Args, URL) ->
     {ok,R} = win32reg:open([read]),
     ok = win32reg:change_key(R,"applications\\iexplore.exe\\shell\\open\\command"),
-    case win32reg:values(R) of
+    _ = case win32reg:values(R) of
 	{ok, Paths} ->
 	    Path = proplists:get_value(default, Paths),
 	    [Cmd | _] = string:tokens(Path, "%"),

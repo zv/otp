@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1998-2015. All Rights Reserved.
+%% Copyright Ericsson AB 1998-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -352,10 +352,10 @@ start() -> dbg_iserver:start().
 stop() ->
     lists:foreach(
       fun(Mod) ->
-	      everywhere(distributed,
-			 fun() ->
+	      _ = everywhere(distributed,
+			     fun() ->
 				 erts_debug:breakpoint({Mod,'_','_'}, false)
-			 end)
+			     end)
       end,
       interpreted()),
     dbg_iserver:stop().
@@ -524,21 +524,21 @@ check(Mod) when is_atom(Mod) -> catch check_module(Mod);
 check(File) when is_list(File) -> catch check_file(File).
 
 load({Mod, Src, Beam, BeamBin, Exp, Abst}, Dist) ->
-    everywhere(Dist,
-	       fun() ->
+    _ = everywhere(Dist,
+		   fun() ->
 		       code:purge(Mod),
 		       erts_debug:breakpoint({Mod,'_','_'}, false),
 		       {module,Mod} = code:load_binary(Mod, Beam, BeamBin)
-	       end),
+		   end),
     case erl_prim_loader:get_file(filename:absname(Src)) of
 	{ok, SrcBin, _} ->
 	    MD5 = code:module_md5(BeamBin),
 	    Bin = term_to_binary({interpreter_module,Exp,Abst,SrcBin,MD5}),
 	    {module, Mod} = dbg_iserver:safe_call({load, Mod, Src, Bin}),
-	    everywhere(Dist,
-		       fun() ->
+	    _ = everywhere(Dist,
+			   fun() ->
 			       true = erts_debug:breakpoint({Mod,'_','_'}, true) > 0
-		       end),
+			   end),
 	    {module, Mod};
 	error ->
 	    error
@@ -547,7 +547,7 @@ load({Mod, Src, Beam, BeamBin, Exp, Abst}, Dist) ->
 check_module(Mod) ->
     case code:which(Mod) of
 	Beam when is_list(Beam) ->
-	    case find_src(Beam) of
+	    case find_src(Mod, Beam) of
 		Src when is_list(Src) ->
 		    check_application(Src),
 		    case check_beam(Beam) of
@@ -608,7 +608,7 @@ check_application2("gs-"++_) -> throw({error,{app,gs}});
 check_application2("debugger-"++_) -> throw({error,{app,debugger}});
 check_application2(_) -> ok.
 
-find_src(Beam) ->
+find_src(Mod, Beam) ->
     Src0 = filename:rootname(Beam) ++ ".erl",
     case is_file(Src0) of
 	true -> Src0;
@@ -618,8 +618,20 @@ find_src(Beam) ->
 				 filename:basename(Src0)]),
 	    case is_file(Src) of
 		true -> Src;
-		false -> error
+		false -> find_src_from_module(Mod)
 	    end
+    end.
+
+find_src_from_module(Mod) ->
+    Compile = Mod:module_info(compile),
+    case lists:keyfind(source, 1, Compile) of
+	{source, Src} ->
+	    case is_file(Src) of
+		true -> Src;
+		false -> error
+	    end;
+	false ->
+	    error
     end.
 
 find_beam(Mod, Src) ->
@@ -726,9 +738,9 @@ del_mod(AbsMod, Dist) ->
 		  list_to_atom(filename:basename(AbsMod,".erl"))
 	  end,
     dbg_iserver:safe_cast({delete, Mod}),
-    everywhere(Dist,
-	       fun() ->
+    _ = everywhere(Dist,
+		   fun() ->
 		       erts_debug:breakpoint({Mod,'_','_'}, false),
 		       erlang:yield()
-	       end),
+		   end),
     ok.

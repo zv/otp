@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2003-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -161,7 +161,9 @@ property_tests_path(Dir, Config) ->
 add_code_pathz(Dir) ->
     case lists:member(Dir, code:get_path()) of
 	true ->  ok;
-	false -> code:add_pathz(Dir)
+	false ->
+	    true = code:add_pathz(Dir),
+	    ok
     end.
 
 compile_tests(Path, ToolModule) ->
@@ -171,10 +173,10 @@ compile_tests(Path, ToolModule) ->
     {ok,FileNames} = file:list_dir("."),
     BeamFiles = [F || F<-FileNames,
 		      filename:extension(F) == ".beam"],
-    [file:delete(F) || F<-BeamFiles],
+    _ = [file:delete(F) || F<-BeamFiles],
     ct:pal("Compiling in ~p:~n  Deleted ~p~n  MacroDefs=~p",[Path,BeamFiles,MacroDefs]),
     Result = make:all([load|MacroDefs]),
-    file:set_cwd(Cwd),
+    ok = file:set_cwd(Cwd),
     Result.
     
 

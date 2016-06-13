@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2011-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2011-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 -module(ssl_tls_dist_proxy).
 
 
--export([listen/1, accept/1, connect/2, get_tcp_address/1]).
+-export([listen/2, accept/2, connect/3, get_tcp_address/1]).
 -export([init/1, start_link/0, handle_call/3, handle_cast/2, handle_info/2, 
 	 terminate/2, code_change/3, ssl_options/2]).
 
@@ -39,14 +39,14 @@
 %% Internal application API
 %%====================================================================
 
-listen(Name) ->
-    gen_server:call(?MODULE, {listen, Name}, infinity). 
+listen(Driver, Name) ->
+    gen_server:call(?MODULE, {listen, Driver, Name}, infinity).
 
-accept(Listen) ->
-    gen_server:call(?MODULE, {accept, Listen}, infinity).
+accept(Driver, Listen) ->
+    gen_server:call(?MODULE, {accept, Driver, Listen}, infinity).
 
-connect(Ip, Port) ->
-    gen_server:call(?MODULE, {connect, Ip, Port}, infinity).
+connect(Driver, Ip, Port) ->
+    gen_server:call(?MODULE, {connect, Driver, Ip, Port}, infinity).
 
 
 do_listen(Options) ->
@@ -108,14 +108,16 @@ init([]) ->
     process_flag(priority, max),
     {ok, #state{}}.
 
-handle_call({listen, Name}, _From, State) ->
+handle_call({listen, Driver, Name}, _From, State) ->
     case gen_tcp:listen(0, [{active, false}, {packet,?PPRE}, {ip, loopback}]) of
 	{ok, Socket} ->
-	    {ok, World} = do_listen([{active, false}, binary, {packet,?PPRE}, {reuseaddr, true}]),
+	    {ok, World} = do_listen([{active, false}, binary, {packet,?PPRE}, {reuseaddr, true},
+                                     Driver:family()]),
 	    {ok, TcpAddress} = get_tcp_address(Socket),
 	    {ok, WorldTcpAddress} = get_tcp_address(World),
 	    {_,Port} = WorldTcpAddress#net_address.address,
-	    case erl_epmd:register_node(Name, Port) of
+	    ErlEpmd = net_kernel:epmd_module(),
+	    case ErlEpmd:register_node(Name, Port) of
 		{ok, Creation} ->
 		    {reply, {ok, {Socket, TcpAddress, Creation}},
 		     State#state{listen={Socket, World}}};
@@ -126,15 +128,15 @@ handle_call({listen, Name}, _From, State) ->
 	    {reply, Error, State}
     end;
 
-handle_call({accept, Listen}, {From, _}, State = #state{listen={_, World}}) ->
+handle_call({accept, _Driver, Listen}, {From, _}, State = #state{listen={_, World}}) ->
     Self = self(),
     ErtsPid = spawn_link(fun() -> accept_loop(Self, erts, Listen, From) end),
     WorldPid = spawn_link(fun() -> accept_loop(Self, world, World, Listen) end),
     {reply, ErtsPid, State#state{accept_loop={ErtsPid, WorldPid}}};
 
-handle_call({connect, Ip, Port}, {From, _}, State) ->
+handle_call({connect, Driver, Ip, Port}, {From, _}, State) ->
     Me = self(),
-    Pid = spawn_link(fun() -> setup_proxy(Ip, Port, Me) end),
+    Pid = spawn_link(fun() -> setup_proxy(Driver, Ip, Port, Me) end),
     receive 
 	{Pid, go_ahead, LPort} -> 
 	    Res = {ok, Socket} = try_connect(LPort),
@@ -194,6 +196,11 @@ accept_loop(Proxy, erts = Type, Listen, Extra) ->
 		{_Kernel, unsupported_protocol} ->
 		    exit(unsupported_protocol)
 	    end;
+	{error, closed} ->
+	    %% The listening socket is closed: the proxy process is
+	    %% shutting down.  Exit normally, to avoid generating a
+	    %% spurious error report.
+	    exit(normal);
 	Error ->
 	    exit(Error)
     end,
@@ -263,10 +270,11 @@ try_connect(Port) ->
 	    try_connect(Port)
     end.
 
-setup_proxy(Ip, Port, Parent) ->
+setup_proxy(Driver, Ip, Port, Parent) ->
     process_flag(trap_exit, true),
     Opts = connect_options(get_ssl_options(client)),
-    case ssl:connect(Ip, Port, [{active, true}, binary, {packet,?PPRE}, nodelay()] ++ Opts) of
+    case ssl:connect(Ip, Port, [{active, true}, binary, {packet,?PPRE}, nodelay(),
+                                Driver:family()] ++ Opts) of
 	{ok, World} ->
 	    {ok, ErtsL} = gen_tcp:listen(0, [{active, true}, {ip, loopback}, binary, {packet,?PPRE}]),
 	    {ok, #net_address{address={_,LPort}}} = get_tcp_address(ErtsL),
@@ -394,6 +402,18 @@ ssl_options(server, ["server_verify", Value|T]) ->
     [{verify, atomize(Value)} | ssl_options(server,T)];
 ssl_options(client, ["client_verify", Value|T]) ->
     [{verify, atomize(Value)} | ssl_options(client,T)];
+ssl_options(server, ["server_verify_fun", Value|T]) ->
+    [{verify_fun, verify_fun(Value)} | ssl_options(server,T)];
+ssl_options(client, ["client_verify_fun", Value|T]) ->
+    [{verify_fun, verify_fun(Value)} | ssl_options(client,T)];
+ssl_options(server, ["server_crl_check", Value|T]) ->
+    [{crl_check, atomize(Value)} | ssl_options(server,T)];
+ssl_options(client, ["client_crl_check", Value|T]) ->
+    [{crl_check, atomize(Value)} | ssl_options(client,T)];
+ssl_options(server, ["server_crl_cache", Value|T]) ->
+    [{crl_cache, termify(Value)} | ssl_options(server,T)];
+ssl_options(client, ["client_crl_cache", Value|T]) ->
+    [{crl_cache, termify(Value)} | ssl_options(client,T)];
 ssl_options(server, ["server_reuse_sessions", Value|T]) ->
     [{reuse_sessions, atomize(Value)} | ssl_options(server,T)];
 ssl_options(client, ["client_reuse_sessions", Value|T]) ->
@@ -418,13 +438,27 @@ ssl_options(server, ["server_dhfile", Value|T]) ->
     [{dhfile, Value} | ssl_options(server,T)];
 ssl_options(server, ["server_fail_if_no_peer_cert", Value|T]) ->
     [{fail_if_no_peer_cert, atomize(Value)} | ssl_options(server,T)];
-ssl_options(_,_) ->
-    exit(malformed_ssl_dist_opt).
+ssl_options(Type, Opts) ->
+    error(malformed_ssl_dist_opt, [Type, Opts]).
 
 atomize(List) when is_list(List) ->
     list_to_atom(List);
 atomize(Atom) when is_atom(Atom) ->
     Atom.
+
+termify(String) when is_list(String) ->
+    {ok, Tokens, _} = erl_scan:string(String ++ "."),
+    {ok, Term} = erl_parse:parse_term(Tokens),
+    Term.
+
+verify_fun(Value) ->
+    case termify(Value) of
+	{Mod, Func, State} when is_atom(Mod), is_atom(Func) ->
+	    Fun = fun Mod:Func/3,
+	    {Fun, State};
+	_ ->
+	    error(malformed_ssl_dist_opt, [Value])
+    end.
 
 flush_old_controller(Pid, Socket) ->
     receive

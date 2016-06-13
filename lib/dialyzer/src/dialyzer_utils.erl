@@ -2,7 +2,7 @@
 %%-----------------------------------------------------------------------
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2006-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2006-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@
 	 process_record_remote_types/1,
          sets_filter/2,
 	 src_compiler_opts/0,
+	 refold_pattern/1,
 	 parallelism/0,
          family/1
 	]).
@@ -83,7 +84,7 @@ print_types1([{record, _Name} = Key|T], RecDict) ->
 
 %% ----------------------------------------------------------------------------
 
--type abstract_code() :: [tuple()]. %% XXX: import from somewhere
+-type abstract_code() :: [erl_parse:abstract_form()].
 -type comp_options()  :: [compile:option()].
 -type mod_or_fname()  :: module() | file:filename().
 -type fa()            :: {atom(), arity()}.
@@ -193,15 +194,18 @@ get_core_from_abstract_code(AbstrCode, Opts) ->
 %%
 %% ============================================================================
 
+-type type_table() :: erl_types:type_table().
+-type mod_records()   :: dict:dict(module(), type_table()).
+
 -spec get_record_and_type_info(abstract_code()) ->
-	{'ok', dict:dict()} | {'error', string()}.
+	{'ok', type_table()} | {'error', string()}.
 
 get_record_and_type_info(AbstractCode) ->
   Module = get_module(AbstractCode),
   get_record_and_type_info(AbstractCode, Module, dict:new()).
 
--spec get_record_and_type_info(abstract_code(), module(), dict:dict()) ->
-	{'ok', dict:dict()} | {'error', string()}.
+-spec get_record_and_type_info(abstract_code(), module(), type_table()) ->
+	{'ok', type_table()} | {'error', string()}.
 
 get_record_and_type_info(AbstractCode, Module, RecDict) ->
   get_record_and_type_info(AbstractCode, Module, RecDict, "nofile").
@@ -297,94 +301,118 @@ get_record_fields([], _RecDict, Acc) ->
 %% The field types are cached. Used during analysis when handling records.
 process_record_remote_types(CServer) ->
   TempRecords = dialyzer_codeserver:get_temp_records(CServer),
-  TempExpTypes = dialyzer_codeserver:get_temp_exported_types(CServer),
-  TempRecords1 = process_opaque_types0(TempRecords, TempExpTypes),
+  ExpTypes = dialyzer_codeserver:get_exported_types(CServer),
+  Cache = erl_types:cache__new(),
+  {TempRecords1, Cache1} =
+    process_opaque_types0(TempRecords, ExpTypes, Cache),
+  %% A cache (not the field type cache) is used for speeding things up a bit.
+  VarTable = erl_types:var_table__new(),
   ModuleFun =
-    fun(Module, Record) ->
+    fun({Module, Record}, C0) ->
         RecordFun =
-          fun(Key, Value) ->
+          fun({Key, Value}, C2) ->
               case Key of
                 {record, Name} ->
                   FieldFun =
-                    fun(Arity, Fields) ->
+                    fun({Arity, Fields}, C4) ->
                         Site = {record, {Module, Name, Arity}},
-                        [{FieldName, Field,
-                          erl_types:t_from_form(Field,
-                                                TempExpTypes,
-                                                Site,
-                                                TempRecords1)}
-                         || {FieldName, Field, _} <- Fields]
+                        {Fields1, C7} =
+                          lists:mapfoldl(fun({FieldName, Field, _}, C5) ->
+                                             {FieldT, C6} =
+                                               erl_types:t_from_form
+                                                 (Field, ExpTypes, Site,
+                                                  TempRecords1, VarTable,
+                                                  C5),
+                                          {{FieldName, Field, FieldT}, C6}
+                                      end, C4, Fields),
+                        {{Arity, Fields1}, C7}
                     end,
                   {FileLine, Fields} = Value,
-                  {FileLine, orddict:map(FieldFun, Fields)};
-                _Other -> Value
+                  {FieldsList, C3} =
+                    lists:mapfoldl(FieldFun, C2, orddict:to_list(Fields)),
+                  {{Key, {FileLine, orddict:from_list(FieldsList)}}, C3};
+                _Other -> {{Key, Value}, C2}
               end
           end,
-	dict:map(RecordFun, Record)
+        {RecordList, C1} =
+          lists:mapfoldl(RecordFun, C0, dict:to_list(Record)),
+        {{Module, dict:from_list(RecordList)}, C1}
     end,
-  NewRecords = dict:map(ModuleFun, TempRecords1),
-  ok = check_record_fields(NewRecords, TempExpTypes),
-  CServer1 = dialyzer_codeserver:finalize_records(NewRecords, CServer),
-  dialyzer_codeserver:finalize_exported_types(TempExpTypes, CServer1).
+  {NewRecordsList, C1} =
+    lists:mapfoldl(ModuleFun, Cache1, dict:to_list(TempRecords1)),
+  NewRecords = dict:from_list(NewRecordsList),
+  _C8 = check_record_fields(NewRecords, ExpTypes, C1),
+  dialyzer_codeserver:finalize_records(NewRecords, CServer).
 
 %% erl_types:t_from_form() substitutes the declaration of opaque types
 %% for the expanded type in some cases. To make sure the initial type,
 %% any(), is not used, the expansion is done twice.
 %% XXX: Recursive opaque types are not handled well.
-process_opaque_types0(TempRecords0, TempExpTypes) ->
-  TempRecords1 = process_opaque_types(TempRecords0, TempExpTypes),
-  process_opaque_types(TempRecords1, TempExpTypes).
+process_opaque_types0(TempRecords0, TempExpTypes, Cache) ->
+  {TempRecords1, NewCache} =
+    process_opaque_types(TempRecords0, TempExpTypes, Cache),
+  process_opaque_types(TempRecords1, TempExpTypes, NewCache).
 
-process_opaque_types(TempRecords, TempExpTypes) ->
+process_opaque_types(TempRecords, TempExpTypes, Cache) ->
+  VarTable = erl_types:var_table__new(),
   ModuleFun =
-    fun(Module, Record) ->
+    fun({Module, Record}, C0) ->
         RecordFun =
-          fun(Key, Value) ->
+          fun({Key, Value}, C2) ->
               case Key of
                 {opaque, Name, NArgs} ->
                   {{_Module, _FileLine, Form, _ArgNames}=F, _Type} = Value,
                   Site = {type, {Module, Name, NArgs}},
-                  Type = erl_types:t_from_form(Form, TempExpTypes, Site,
-                                               TempRecords),
-                  {F, Type};
-                _Other -> Value
+                  {Type, C3} =
+                    erl_types:t_from_form(Form, TempExpTypes, Site,
+                                          TempRecords, VarTable, C2),
+                  {{Key, {F, Type}}, C3};
+                _Other -> {{Key, Value}, C2}
               end
           end,
-	dict:map(RecordFun, Record)
+        {RecordList, C1} =
+          lists:mapfoldl(RecordFun, C0, dict:to_list(Record)),
+        {{Module, dict:from_list(RecordList)}, C1}
+        %% dict:map(RecordFun, Record)
     end,
-  dict:map(ModuleFun, TempRecords).
+  {TempRecordList, NewCache} =
+    lists:mapfoldl(ModuleFun, Cache, dict:to_list(TempRecords)),
+  {dict:from_list(TempRecordList), NewCache}.
+  %% dict:map(ModuleFun, TempRecords).
 
-check_record_fields(Records, TempExpTypes) ->
+check_record_fields(Records, TempExpTypes, Cache) ->
+  VarTable = erl_types:var_table__new(),
   CheckFun =
-    fun({Module, Element}) ->
-        CheckForm = fun(Form, Site) ->
-                      erl_types:t_check_record_fields(Form, TempExpTypes,
-                                                      Site, Records)
+    fun({Module, Element}, C0) ->
+        CheckForm = fun(Form, Site, C1) ->
+                        erl_types:t_check_record_fields(Form, TempExpTypes,
+                                                        Site, Records,
+                                                        VarTable, C1)
                   end,
         ElemFun =
-          fun({Key, Value}) ->
+          fun({Key, Value}, C2) ->
               case Key of
                 {record, Name} ->
                   FieldFun =
-                    fun({Arity, Fields}) ->
+                    fun({Arity, Fields}, C3) ->
                         Site = {record, {Module, Name, Arity}},
-                        _ = [ok = CheckForm(Field, Site) ||
-                              {_, Field, _} <- Fields],
-                        ok
+                        lists:foldl(fun({_, Field, _}, C4) ->
+                                        CheckForm(Field, Site, C4)
+                                    end, C3, Fields)
                     end,
                   {FileLine, Fields} = Value,
-                  Fun = fun() -> lists:foreach(FieldFun, Fields) end,
+                  Fun = fun() -> lists:foldl(FieldFun, C2, Fields) end,
                   msg_with_position(Fun, FileLine);
                 {_OpaqueOrType, Name, NArgs} ->
                   Site = {type, {Module, Name, NArgs}},
                   {{_Module, FileLine, Form, _ArgNames}, _Type} = Value,
-                  Fun = fun() -> ok = CheckForm(Form, Site) end,
+                  Fun = fun() -> CheckForm(Form, Site, C2) end,
                   msg_with_position(Fun, FileLine)
               end
           end,
-        lists:foreach(ElemFun, dict:to_list(Element))
+        lists:foldl(ElemFun, C0, dict:to_list(Element))
     end,
-  lists:foreach(CheckFun, dict:to_list(Records)).
+  lists:foldl(CheckFun, Cache, dict:to_list(Records)).
 
 msg_with_position(Fun, FileLine) ->
   try Fun()
@@ -396,7 +424,7 @@ msg_with_position(Fun, FileLine) ->
       throw({error, NewMsg})
   end.
 
--spec merge_records(dict:dict(), dict:dict()) -> dict:dict().
+-spec merge_records(mod_records(), mod_records()) -> mod_records().
 
 merge_records(NewRecords, OldRecords) ->
   dict:merge(fun(_Key, NewVal, _OldVal) -> NewVal end, NewRecords, OldRecords).
@@ -410,7 +438,7 @@ merge_records(NewRecords, OldRecords) ->
 -type spec_dict()     :: dict:dict().
 -type callback_dict() :: dict:dict().
 
--spec get_spec_info(module(), abstract_code(), dict:dict()) ->
+-spec get_spec_info(module(), abstract_code(), type_table()) ->
         {'ok', spec_dict(), callback_dict()} | {'error', string()}.
 
 get_spec_info(ModName, AbstractCode, RecordsDict) ->
@@ -676,7 +704,7 @@ format_errors([]) ->
 format_sig(Type) ->
   format_sig(Type, dict:new()).
 
--spec format_sig(erl_types:erl_type(), dict:dict()) -> string().
+-spec format_sig(erl_types:erl_type(), type_table()) -> string().
 
 format_sig(Type, RecDict) ->
   "fun(" ++ Sig = lists:flatten(erl_types:t_to_string(Type, RecDict)),
@@ -753,6 +781,13 @@ pp_hook(Node, Ctxt, Cont) ->
       pp_binary(Node, Ctxt, Cont);
     bitstr ->
       pp_segment(Node, Ctxt, Cont);
+    map ->
+      pp_map(Node, Ctxt, Cont);
+    literal ->
+      case is_map(cerl:concrete(Node)) of
+	true -> pp_map(Node, Ctxt, Cont);
+	false -> Cont(Node, Ctxt)
+      end;
     _ ->
       Cont(Node, Ctxt)
   end.
@@ -832,6 +867,87 @@ pp_unit(Unit, Ctxt, Cont) ->
 pp_atom(Atom) ->
   String = atom_to_list(cerl:atom_val(Atom)),
   prettypr:text(String).
+
+pp_map(Node, Ctxt, Cont) ->
+  Arg = cerl:map_arg(Node),
+  Before = case cerl:is_c_map_empty(Arg) of
+	     true -> prettypr:floating(prettypr:text("#{"));
+	     false ->
+	       prettypr:beside(Cont(Arg,Ctxt),
+			       prettypr:floating(prettypr:text("#{")))
+	   end,
+  prettypr:beside(
+    Before, prettypr:beside(
+	      prettypr:par(seq(cerl:map_es(Node),
+			       prettypr:floating(prettypr:text(",")),
+			       Ctxt, Cont)),
+	      prettypr:floating(prettypr:text("}")))).
+
+seq([H | T], Separator, Ctxt, Fun) ->
+  case T of
+    [] -> [Fun(H, Ctxt)];
+    _  -> [prettypr:beside(Fun(H, Ctxt), Separator)
+	   | seq(T, Separator, Ctxt, Fun)]
+  end;
+seq([], _, _, _) ->
+  [prettypr:empty()].
+
+%%------------------------------------------------------------------------------
+
+-spec refold_pattern(cerl:cerl()) -> cerl:cerl().
+
+refold_pattern(Pat) ->
+  %% Avoid the churn of unfolding and refolding
+  case cerl:is_literal(Pat) andalso find_map(cerl:concrete(Pat)) of
+    true ->
+      Tree = refold_concrete_pat(cerl:concrete(Pat)),
+      PatAnn = cerl:get_ann(Pat),
+      case proplists:is_defined(label, PatAnn) of
+	%% Literals are not normally annotated with a label, but can be if, for
+	%% example, they were created by cerl:fold_literal/1.
+	true -> cerl:set_ann(Tree, PatAnn);
+	false ->
+	  [{label, Label}] = cerl:get_ann(Tree),
+	  cerl:set_ann(Tree, [{label, Label}|PatAnn])
+      end;
+    false -> Pat
+  end.
+
+find_map(#{}) -> true;
+find_map(Tuple) when is_tuple(Tuple) -> find_map(tuple_to_list(Tuple));
+find_map([H|T]) -> find_map(H) orelse find_map(T);
+find_map(_) -> false.
+
+refold_concrete_pat(Val) ->
+  case Val of
+    _ when is_tuple(Val) ->
+      Els = lists:map(fun refold_concrete_pat/1, tuple_to_list(Val)),
+      case lists:all(fun cerl:is_literal/1, Els) of
+	true -> cerl:abstract(Val);
+	false -> label(cerl:c_tuple_skel(Els))
+      end;
+    [H|T] ->
+      case  cerl:is_literal(HP=refold_concrete_pat(H))
+	and cerl:is_literal(TP=refold_concrete_pat(T))
+      of
+	true -> cerl:abstract(Val);
+	false -> label(cerl:c_cons_skel(HP, TP))
+      end;
+    M when is_map(M) ->
+      %% Map patterns are not generated by the parser(!), but they have a
+      %% property we want, namely that they are never folded into literals.
+      %% N.B.: The key in a map pattern is an expression, *not* a pattern.
+      label(cerl:c_map_pattern([cerl:c_map_pair_exact(cerl:abstract(K),
+						      refold_concrete_pat(V))
+				|| {K, V} <- maps:to_list(M)]));
+    _ ->
+      cerl:abstract(Val)
+  end.
+
+label(Tree) ->
+      %% Sigh
+      Label = -erlang:unique_integer([positive]),
+      cerl:set_ann(Tree, [{label, Label}]).
 
 %%------------------------------------------------------------------------------
 

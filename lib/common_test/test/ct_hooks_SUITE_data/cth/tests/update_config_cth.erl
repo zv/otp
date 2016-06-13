@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010-2011. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 -include_lib("common_test/src/ct_util.hrl").
 -include_lib("common_test/include/ct_event.hrl").
 
--define(now, os:timestamp()).
+-define(now, ct_test_support:unique_timestamp()).
 
 %% CT Hooks
 -compile(export_all).
@@ -69,6 +69,14 @@ post_end_per_group(Group,Config,Return,State) ->
 pre_init_per_testcase(TC,Config,State) ->
     empty_cth:pre_init_per_testcase(TC,Config,State),
     {[{pre_init_per_testcase,?now}|Config],State}.
+
+post_init_per_testcase(TC,Config,Return,State) ->
+    empty_cth:post_init_per_testcase(TC,Config,Return,State),
+    {[{post_init_per_testcase,?now}|Config],State}.
+
+pre_end_per_testcase(TC,Config,State) ->
+    empty_cth:pre_end_per_testcase(TC,Config,State),
+    {[{pre_end_per_testcase,?now}|Config],State}.
 
 post_end_per_testcase(TC,Config,Return,State) ->
     empty_cth:post_end_per_testcase(TC,Config,Return,State),
