@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1997-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -80,6 +80,8 @@ resolve(Suite0) when is_atom(Suite0) ->
 	{Suite, Case} ->
 	    {Suite, is_group(Suite,Case)}
     end;
+resolve({Suite0, {group, Case}}) ->
+    resolve({Suite0, Case});
 resolve({Suite0, Case}) when is_atom(Suite0), is_atom(Case) ->
     case alias(Suite0) of
 	Suite when is_atom(Suite) ->

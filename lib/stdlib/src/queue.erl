@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1996-2014. All Rights Reserved.
+%% Copyright Ericsson AB 1996-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -31,9 +31,13 @@
 
 %% Okasaki API from klacke
 -export([cons/2,head/1,tail/1,
-	 snoc/2,last/1,daeh/1,init/1,liat/1,lait/1]).
+	 snoc/2,last/1,daeh/1,init/1,liat/1]).
 
 -export_type([queue/0, queue/1]).
+
+%% Mis-spelled, deprecated.
+-export([lait/1]).
+-deprecated([lait/1]).
 
 %%--------------------------------------------------------------------------
 %% Efficient implementation of double ended fifo queues

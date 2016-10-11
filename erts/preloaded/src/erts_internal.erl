@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2012-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2012-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -31,24 +31,37 @@
 
 -export([await_port_send_result/3]).
 -export([cmp_term/2]).
--export([map_to_tuple_keys/1, map_type/1, map_hashmap_children/1]).
--export([port_command/3, port_connect/2, port_close/1,
+-export([map_to_tuple_keys/1, term_type/1, map_hashmap_children/1]).
+-export([open_port/2, port_command/3, port_connect/2, port_close/1,
 	 port_control/3, port_call/3, port_info/1, port_info/2]).
 
 -export([system_check/1,
          gather_system_check_result/1]).
 
--export([request_system_task/3]).
+-export([request_system_task/3, request_system_task/4]).
+-export([garbage_collect/1]).
 
--export([check_process_code/2]).
+-export([check_process_code/3]).
+-export([check_dirty_process_code/2]).
+-export([is_process_executing_dirty/1]).
+-export([release_literal_area_switch/0]).
+-export([purge_module/2]).
 
 -export([flush_monitor_messages/3]).
 
 -export([await_result/1, gather_io_bytes/2]).
 
--export([time_unit/0]).
+-export([time_unit/0, perf_counter_unit/0]).
 
 -export([is_system_process/1]).
+
+-export([await_microstate_accounting_modifications/3,
+	 gather_microstate_accounting_result/2]).
+
+-export([trace/3, trace_pattern/3]).
+
+%% Auto import name clash
+-export([check_process_code/1]).
 
 %%
 %% Await result of send to port
@@ -90,6 +103,13 @@ gather_io_bytes(Ref, No, InAcc, OutAcc) ->
 %%
 %% Statically linked port NIFs
 %%
+
+-spec erts_internal:open_port(PortName, PortSettings) -> Result when
+      PortName :: tuple(),
+      PortSettings :: term(),
+      Result :: port() | reference() | atom().
+open_port(_PortName, _PortSettings) ->
+    erlang:nif_error(undefined).
 
 -spec erts_internal:port_command(Port, Data, OptionList) -> Result when
       Port :: port() | atom(),
@@ -186,18 +206,104 @@ port_info(_Result, _Item) ->
 
 -spec request_system_task(Pid, Prio, Request) -> 'ok' when
       Prio :: 'max' | 'high' | 'normal' | 'low',
-      Request :: {'garbage_collect', term()}
-	       | {'check_process_code', term(), module(), boolean()},
+      Type :: 'major' | 'minor',
+      Request :: {'garbage_collect', term(), Type}
+	       | {'check_process_code', term(), module()}
+	       | {'copy_literals', term(), boolean()},
       Pid :: pid().
 
 request_system_task(_Pid, _Prio, _Request) ->
     erlang:nif_error(undefined).
 
--spec check_process_code(Module, OptionList) -> boolean() when
+-spec request_system_task(RequesterPid, TargetPid, Prio, Request) -> 'ok' | 'dirty_execution' when
+      Prio :: 'max' | 'high' | 'normal' | 'low',
+      Request :: {'garbage_collect', term()}
+	       | {'check_process_code', term(), module()}
+	       | {'copy_literals', term(), boolean()},
+      RequesterPid :: pid(),
+      TargetPid :: pid().
+
+request_system_task(_RequesterPid, _TargetPid, _Prio, _Request) ->
+    erlang:nif_error(undefined).
+
+-spec garbage_collect(Mode) -> 'true' when Mode :: 'major' | 'minor'.
+
+garbage_collect(_Mode) ->
+    erlang:nif_error(undefined).
+
+-spec check_process_code(Module) -> boolean() when
+      Module :: module().
+check_process_code(_Module) ->
+    erlang:nif_error(undefined).
+
+-spec check_process_code(Pid, Module, OptionList) -> CheckResult | async when
+      Pid :: pid(),
       Module :: module(),
-      Option :: {allow_gc, boolean()},
-      OptionList :: [Option].
-check_process_code(_Module, _OptionList) ->
+      RequestId :: term(),
+      Option :: {async, RequestId} | {allow_gc, boolean()},
+      OptionList :: [Option],
+      CheckResult :: boolean() | aborted.
+check_process_code(Pid, Module, OptionList)  ->
+    Async = get_cpc_opts(OptionList, sync),
+    case Async of
+	{async, ReqId} ->
+	    {priority, Prio} = erlang:process_info(erlang:self(),
+						   priority),
+	    erts_internal:request_system_task(Pid,
+					      Prio,
+					      {check_process_code,
+					       ReqId,
+					       Module}),
+	    async;
+	sync ->
+	    case Pid == erlang:self() of
+		true ->
+		    erts_internal:check_process_code(Module);
+		false ->
+		    {priority, Prio} = erlang:process_info(erlang:self(),
+							   priority),
+		    ReqId = erlang:make_ref(),
+		    erts_internal:request_system_task(Pid,
+						      Prio,
+						      {check_process_code,
+						       ReqId,
+						       Module}),
+		    receive
+			{check_process_code, ReqId, CheckResult} ->
+			    CheckResult
+		    end
+	    end
+    end.
+
+% gets async opt and verify valid option list
+get_cpc_opts([{async, _ReqId} = AsyncTuple | Options], _OldAsync) ->
+    get_cpc_opts(Options, AsyncTuple);
+get_cpc_opts([{allow_gc, AllowGC} | Options], Async) when AllowGC == true;
+							  AllowGC == false ->
+    get_cpc_opts(Options, Async);
+get_cpc_opts([], Async) ->
+    Async.
+
+-spec check_dirty_process_code(Pid,Module) -> 'true' | 'false' when
+      Pid :: pid(),
+      Module :: module().
+check_dirty_process_code(_Pid,_Module) ->
+    erlang:nif_error(undefined).
+
+-spec is_process_executing_dirty(Pid) -> 'true' | 'false' when
+      Pid :: pid().
+is_process_executing_dirty(_Pid) ->
+    erlang:nif_error(undefined).
+
+-spec release_literal_area_switch() -> 'true' | 'false'.
+
+release_literal_area_switch() ->
+    erlang:nif_error(undefined).
+
+-spec purge_module(Module, Op) -> boolean() when
+      Module :: module(),
+      Op :: 'prepare' | 'prepare_on_load' | 'abort' | 'complete'.
+purge_module(_Module, _Op) ->
     erlang:nif_error(undefined).
 
 -spec system_check(Type) -> 'ok' when
@@ -235,12 +341,18 @@ cmp_term(_A,_B) ->
 map_to_tuple_keys(_M) ->
     erlang:nif_error(undefined).
 
-%% return the internal map type
--spec map_type(M) -> Type when
-    M :: map(),
-    Type :: 'flatmap' | 'hashmap' | 'hashmap_node'.
+%% return the internal term type
+-spec term_type(T) -> Type when
+    T :: term(),
+    Type :: 'flatmap' | 'hashmap' | 'hashmap_node'
+          | 'fixnum'  | 'bignum'  | 'hfloat'
+          | 'list' | 'tuple' | 'export' | 'fun'
+          | 'refc_binary' | 'heap_binary' | 'sub_binary'
+          | 'reference'   | 'external_reference'
+          | 'pid' | 'external_pid' | 'port' | 'external_port'
+          | 'atom' | 'catch' | 'nil'.
 
-map_type(_M) ->
+term_type(_T) ->
     erlang:nif_error(undefined).
 
 %% return the internal hashmap sub-nodes from
@@ -278,8 +390,63 @@ flush_monitor_messages(Ref, Multi, Res) when is_reference(Ref) ->
 time_unit() ->
     erlang:nif_error(undefined).
 
+-spec erts_internal:perf_counter_unit() -> pos_integer().
+
+perf_counter_unit() ->
+    erlang:nif_error(undefined).
+
 -spec erts_internal:is_system_process(Pid) -> boolean() when
       Pid :: pid().
 
 is_system_process(_Pid) ->
+    erlang:nif_error(undefined).
+
+-spec await_microstate_accounting_modifications(Ref, Result, Threads) -> boolean() when
+      Ref :: reference(),
+      Result :: boolean(),
+      Threads :: pos_integer().
+
+await_microstate_accounting_modifications(Ref, Result, Threads) ->
+    _ = microstate_accounting(Ref,Threads),
+    Result.
+
+-spec gather_microstate_accounting_result(Ref, Threads) -> [#{}] when
+      Ref :: reference(),
+      Threads :: pos_integer().
+
+gather_microstate_accounting_result(Ref, Threads) ->
+    microstate_accounting(Ref, Threads).
+
+microstate_accounting(_Ref, 0) ->
+    [];
+microstate_accounting(Ref, Threads) ->
+    receive
+        Ref -> microstate_accounting(Ref, Threads - 1);
+        {Ref, Res} ->
+	    [Res | microstate_accounting(Ref, Threads - 1)]
+    end.
+
+-spec trace(PidPortSpec, How, FlagList) -> integer() when
+      PidPortSpec :: pid() | port()
+                   | all | processes | ports
+                   | existing | existing_processes | existing_ports
+                   | new | new_processes | new_ports,
+      How :: boolean(),
+      FlagList :: [].
+trace(_PidSpec, _How, _FlagList) ->
+    erlang:nif_error(undefined).
+
+-type trace_pattern_mfa() ::
+      {atom(),atom(),arity() | '_'} | on_load.
+-type trace_match_spec() ::
+      [{[term()] | '_' ,[term()],[term()]}].
+
+-spec trace_pattern(MFA, MatchSpec, FlagList) -> non_neg_integer() when
+      MFA :: trace_pattern_mfa(),
+      MatchSpec :: (MatchSpecList :: trace_match_spec())
+                 | boolean()
+                 | restart
+                 | pause,
+      FlagList :: [ ].
+trace_pattern(_MFA, _MatchSpec, _FlagList) ->
     erlang:nif_error(undefined).

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2003-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -111,12 +111,15 @@
 %%    <dd>Set to 'true' if xmerl should add to elements missing attributes
 %%    with a defined default value (default 'false').</dd>
 %% </dl>
+%% @type xmlElement() = #xmlElement{}.
+%% The record definition is found in xmerl.hrl.
+%% @type xmlDocument() = #xmlDocument{}.
+%% The record definition is found in xmerl.hrl.
 %% @type document() = xmlElement() | xmlDocument(). <p>
 %% The document returned by <tt>xmerl_scan:string/[1,2]</tt> and
 %% <tt>xmerl_scan:file/[1,2]</tt>. The type of the returned record depends on
 %% the value of the document option passed to the function.
 %% </p>
-
 
 -module(xmerl_scan).
 -vsn('0.20').
@@ -605,7 +608,7 @@ scan_document(Str0, S=#xmerl_scanner{event_fun = Event,
 	     schema ->
 		 case schemaLocations(Res, S5) of
 		     {ok, Schemas} ->
-			 cleanup(S5),
+			 _ = cleanup(S5),
 			 %%?dbg("Schemas: ~p~nRes: ~p~ninhertih_options(S): ~p~n",
 			 %%          [Schemas,Res,inherit_options(S5)]),
 			 XSDRes = xmerl_xsd:process_validate(Schemas, Res,

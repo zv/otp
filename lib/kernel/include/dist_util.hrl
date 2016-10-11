@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1999-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1999-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@
 	  f_getll,               %% Get low level port or pid.
 	  f_address,         %% The address of the "socket", 
 	                     %% generated from Socket,Node
-	  %% These two are used in the tick loop,
+	  %% These three are used in the tick loop,
 	  %% so they are not fun's to avoid holding old code.
 	  mf_tick,           %% Takes the socket as parameters and
 	                     %% sends a tick, this is no fun, it
@@ -74,7 +74,11 @@
 			     %% {ok, RecvCnt, SendCnt, SendPend} for
 	                     %% a given socket. This is a {M,F}, 
 	                     %% returning {error, Reason on failure}
-	  request_type = normal
+	  request_type = normal,
+
+	  %% New in kernel-5.1 (OTP 19.1):
+	  mf_setopts,        %% netkernel:setopts on active connection
+	  mf_getopts         %% netkernel:getopts on active connection
 }).
 	  
 

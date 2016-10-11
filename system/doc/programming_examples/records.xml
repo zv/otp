@@ -4,7 +4,7 @@
 <chapter>
   <header>
     <copyright>
-      <year>2003</year><year>2013</year>
+      <year>2003</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -93,7 +93,7 @@ person</pre>
       at compile time, not at runtime. For details on records
       in the shell, see the
       <seealso marker="stdlib:shell">shell(3)</seealso>
-      manual page in <c>stdlib</c>.</p>
+      manual page in STDLIB.</p>
   </section>
 
   <section>

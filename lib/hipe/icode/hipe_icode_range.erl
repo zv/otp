@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -73,8 +73,8 @@
 -type final_fun() :: fun((mfa(), [range()]) -> 'ok').
 -type data() :: {mfa(), args_fun(), call_fun(), final_fun()}.
 -type label() :: non_neg_integer().
--type info() :: gb_trees:tree().
--type work_list() :: {[label()], [label()], sets:set()}.
+-type info() :: map().
+-type work_list() :: {[label()], [label()], set(label())}.
 -type variable() :: #icode_variable{}.
 -type annotated_variable() :: #icode_variable{}.
 -type argument() :: #icode_const{} | variable().
@@ -82,13 +82,13 @@
 -type instr_split_info()  :: {icode_instr(), [{label(),info()}]}.
 -type last_instr_return() :: {instr_split_info(), range()}.
 
--record(state, {info_map = gb_trees:empty()	:: info(), 
-		counter  = dict:new()		:: dict:dict(),
-		cfg				:: cfg(), 
-		liveness = gb_trees:empty()	:: gb_trees:tree(),
+-record(state, {info_map = #{}			:: info(),
+		cfg				:: cfg(),
+		liveness			:: hipe_icode_ssa:liveness(),
 		ret_type			:: range(),
 		lookup_fun			:: call_fun(),
 		result_action			:: final_fun()}).
+-type state() :: #state{}.
 
 -define(WIDEN, 1).
 
@@ -172,7 +172,7 @@ analyse(Cfg, Data) ->
   catch throw:no_input -> ok
   end.
 
--spec safe_analyse(cfg(), data()) -> #state{}.
+-spec safe_analyse(cfg(), data()) -> state().
 
 safe_analyse(CFG, Data={MFA,_,_,_}) ->
   State = state__init(CFG, Data),
@@ -181,27 +181,26 @@ safe_analyse(CFG, Data={MFA,_,_,_}) ->
   (state__result_action(NewState))(MFA, [state__ret_type(NewState)]),
   NewState.
 
--spec rewrite_blocks(#state{}) -> #state{}.
+-spec rewrite_blocks(state()) -> state().
 
 rewrite_blocks(State) ->
   CFG = state__cfg(State),
   Start = hipe_icode_cfg:start_label(CFG),
-  rewrite_blocks([Start], State, [Start]).
+  rewrite_blocks([Start], State, set_from_list([Start])).
 
--spec rewrite_blocks([label()], #state{}, [label()]) -> #state{}.
+-spec rewrite_blocks([label()], state(), set(label())) -> state().
 
 rewrite_blocks([Next|Rest], State, Visited) ->
   Info = state__info_in(State, Next),
   {NewState, NewLabels} = analyse_block(Next, Info, State, true),
-  NewLabelsSet = ordsets:from_list(NewLabels),
-  RealNew = ordsets:subtract(NewLabelsSet, Visited),
-  NewVisited = ordsets:union([RealNew, Visited, [Next]]),
-  NewWork = ordsets:union([RealNew, Rest]),
+  RealNew = not_visited(NewLabels, Visited),
+  NewVisited = set_union(set_from_list(RealNew), Visited),
+  NewWork = RealNew ++ Rest,
   rewrite_blocks(NewWork, NewState, NewVisited);
 rewrite_blocks([], State, _) ->
   State.
 
--spec analyse_blocks(#state{}, work_list()) -> #state{}.
+-spec analyse_blocks(state(), work_list()) -> state().
 
 analyse_blocks(State, Work) ->
   case get_work(Work) of
@@ -218,7 +217,7 @@ analyse_blocks(State, Work) ->
       analyse_blocks(NewState, NewWork2)
   end.
 
--spec analyse_block(label(), info(), #state{}, boolean()) -> {#state{}, [label()]}.
+-spec analyse_block(label(), info(), state(), boolean()) -> {state(), [label()]}.
 
 analyse_block(Label, Info, State, Rewrite) ->
   BB = state__bb(State, Label),
@@ -612,36 +611,32 @@ analyse_if(If, Info, Rewrite) ->
 	 {#icode_goto{} | #icode_if{}, [{label(), info()}]}.
 
 analyse_sane_if(If, Info, [Arg1, Arg2], [Range1, Range2], Rewrite) ->
-  case normalize_name(hipe_icode:if_op(If)) of
-    '>' ->
-      {TrueRange2, TrueRange1, FalseRange2, FalseRange1} = 
-	range_inequality_propagation(Range2, Range1);
-    '<' ->
-      {TrueRange1, TrueRange2, FalseRange1, FalseRange2} =
+  {TrueRange1, TrueRange2, FalseRange1, FalseRange2} =
+    case normalize_name(hipe_icode:if_op(If)) of
+      '>' ->
+	{TR2, TR1, FR2, FR1} = range_inequality_propagation(Range2, Range1),
+	{TR1, TR2, FR1, FR2};
+      '<' ->
 	range_inequality_propagation(Range1, Range2);
-    '>=' ->
-      {FalseRange1, FalseRange2, TrueRange1, TrueRange2} =
-	range_inequality_propagation(Range1, Range2);
-    '=<' ->
-      {FalseRange2, FalseRange1, TrueRange2, TrueRange1} =
-	range_inequality_propagation(Range2, Range1);
-    '=:=' ->
-      {TrueRange1, TrueRange2, FalseRange1, FalseRange2} =
-	range_equality_propagation(Range1, Range2);
-    '=/=' ->
-      {FalseRange1, FalseRange2, TrueRange1, TrueRange2} =
-	range_equality_propagation(Range1, Range2);
-    '==' ->
-      {TempTrueRange1, TempTrueRange2, FalseRange1, FalseRange2} =
-	range_equality_propagation(Range1, Range2),
-      TrueRange1 = set_other(TempTrueRange1, other(Range1)),
-      TrueRange2 = set_other(TempTrueRange2, other(Range2));
-    '/=' -> 
-      {TempFalseRange1, TempFalseRange2, TrueRange1, TrueRange2} =
-	range_equality_propagation(Range1, Range2),
-      FalseRange1 = set_other(TempFalseRange1, other(Range1)),
-      FalseRange2 = set_other(TempFalseRange2, other(Range2))
-  end,
+      '>=' ->
+	{FR1, FR2, TR1, TR2} = range_inequality_propagation(Range1, Range2),
+	{TR1, TR2, FR1, FR2};
+      '=<' ->
+	{FR2, FR1, TR2, TR1} = range_inequality_propagation(Range2, Range1),
+	{TR1, TR2, FR1, FR2};
+      '=:=' ->
+	{TR1, TR2, FR1, FR2} = range_equality_propagation(Range1, Range2),
+	{TR1, TR2, FR1, FR2};
+      '=/=' ->
+	{FR1, FR2, TR1, TR2} = range_equality_propagation(Range1, Range2),
+	{TR1, TR2, FR1, FR2};
+      '==' ->
+	{TR1, TR2, FR1, FR2} = range_equality_propagation(Range1, Range2),
+	{set_other(TR1,other(Range1)), set_other(TR2,other(Range2)), FR1, FR2};
+      '/=' ->
+	{FR1, FR2, TR1, TR2} = range_equality_propagation(Range1, Range2),
+	{TR1, TR2, set_other(FR1,other(Range1)), set_other(FR2,other(Range2))}
+    end,
   %% io:format("TR1 = ~w\nTR2 = ~w\n", [TrueRange1, TrueRange2]),
   True =
     case lists:all(fun range__is_none/1, [TrueRange1, TrueRange2]) of
@@ -694,26 +689,24 @@ normalize_name(Name) ->
 -spec range_equality_propagation(range(), range()) ->
 	  {range(), range(), range(), range()}.
 
-range_equality_propagation(Range_1, Range_2) ->  
-  True_range = inf(Range_1, Range_2),
-  case {range(Range_1), range(Range_2)} of
-    {{N,N}, {N,N}} ->
-      False_range_1 = none_range(),
-      False_range_2 = none_range();
-    {{N1,N1}, {N2,N2}} ->
-      False_range_1 = Range_1,
-      False_range_2 = Range_2;
-    {{N,N}, _} ->
-      False_range_1 = Range_1,
-      {_,False_range_2} = compare_with_integer(N, Range_2);
-    {_, {N,N}} ->
-      False_range_2 = Range_2,
-      {_,False_range_1} = compare_with_integer(N, Range_1);
-    {_, _} ->
-      False_range_1 = Range_1,
-      False_range_2 = Range_2
-  end,
-  {True_range, True_range, False_range_1, False_range_2}.
+range_equality_propagation(Range1, Range2) ->  
+  TrueRange = inf(Range1, Range2),
+  {FalseRange1, FalseRange2} =
+    case {range(Range1), range(Range2)} of
+      {{N,N}, {N,N}} ->
+	{none_range(), none_range()};
+      {{N1,N1}, {N2,N2}} ->
+	{Range1, Range2};
+      {{N,N}, _} ->
+	{_,FR2} = compare_with_integer(N, Range2),
+	{Range1, FR2};
+      {_, {N,N}} ->
+	{_,FR1} = compare_with_integer(N, Range1),
+	{FR1, Range2};
+      {_, _} ->
+	{Range1, Range2}
+    end,
+  {TrueRange, TrueRange, FalseRange1, FalseRange2}.
 
 -spec range_inequality_propagation(range(), range()) ->
 	  {range(), range(), range(), range()}.
@@ -779,18 +772,17 @@ analyse_type(Type, Info, Rewrite) ->
   TypeTest = hipe_icode:type_test(Type),
   [Arg|_] = hipe_icode:type_args(Type),
   OldVarRange = get_range_from_arg(Arg),
-  case TypeTest of
-    {integer, N} ->
-      {TrueRange,FalseRange} = compare_with_integer(N,OldVarRange);
-    integer ->
-      TrueRange = inf(any_range(), OldVarRange),
-      FalseRange = inf(none_range(), OldVarRange);
-    number ->
-      TrueRange = FalseRange = OldVarRange;
-    _ ->
-      TrueRange = inf(none_range(), OldVarRange),
-      FalseRange = OldVarRange
-  end,
+  {TrueRange, FalseRange} =
+    case TypeTest of
+      {integer, N} ->
+	compare_with_integer(N, OldVarRange);
+      integer ->
+	{inf(any_range(), OldVarRange), inf(none_range(), OldVarRange)};
+      number ->
+	{OldVarRange, OldVarRange};
+      _ ->
+	{inf(none_range(), OldVarRange), OldVarRange}
+    end,
   TrueLabel = hipe_icode:type_true_label(Type),
   FalseLabel = hipe_icode:type_false_label(Type),
   TrueInfo = enter_define({Arg, TrueRange}, Info),
@@ -1201,14 +1193,12 @@ basic_type(#unsafe_update_element{}) -> not_analysed.
 
 analyse_bs_get_integer(Size, Flags, true) ->
   Signed = Flags band 4,
-  if Signed =:= 0 ->
-      Max = inf_add(inf_bsl(1, Size), -1),
-      Min = 0;
-     true ->
-      Max = inf_add(inf_bsl(1, Size-1), -1),
-      Min = inf_inv(inf_bsl(1, Size-1))
-  end,
-  {Min, Max};
+  case Signed =:= 0 of
+    true ->
+      {0, inf_add(inf_bsl(1, Size), -1)};	% return {Min, Max}
+    false ->
+      {inf_inv(inf_bsl(1, Size-1)), inf_add(inf_bsl(1, Size-1), -1)}
+  end;
 analyse_bs_get_integer(Size, Flags, false) when is_integer(Size),
 						is_integer(Flags) ->
   any_r().
@@ -1653,7 +1643,7 @@ inf_bsl(Number1, Number2) when is_integer(Number1), is_integer(Number2) ->
 
 %% State
 
--spec state__init(cfg(), data()) -> #state{}.
+-spec state__init(cfg(), data()) -> state().
 
 state__init(Cfg, {MFA, ArgsFun, CallFun, FinalFun}) ->
   Start = hipe_icode_cfg:start_label(Cfg),  
@@ -1669,26 +1659,26 @@ state__init(Cfg, {MFA, ArgsFun, CallFun, FinalFun}) ->
     false ->
       NewParams = lists:zipwith(fun update_info/2, Params, Ranges),
       NewCfg = hipe_icode_cfg:params_update(Cfg, NewParams),
-      Info = enter_defines(NewParams, gb_trees:empty()),
-      InfoMap = gb_trees:insert({Start, in}, Info, gb_trees:empty()),
+      Info = enter_defines(NewParams, #{}),
+      InfoMap = #{{Start, in} => Info},
       #state{info_map=InfoMap, cfg=NewCfg, liveness=Liveness,
 	     ret_type=none_type(),
 	     lookup_fun=CallFun, result_action=FinalFun}
   end.
 
--spec state__cfg(#state{}) -> cfg().
+-spec state__cfg(state()) -> cfg().
 
 state__cfg(#state{cfg=Cfg}) ->
   Cfg.
 
--spec state__bb(#state{}, label()) -> bb().
+-spec state__bb(state(), label()) -> bb().
 
 state__bb(#state{cfg=Cfg}, Label) ->
   BB = hipe_icode_cfg:bb(Cfg, Label),
   true = hipe_bb:is_bb(BB), % Just an assert
   BB.
   
--spec state__bb_add(#state{}, label(), bb()) -> #state{}.
+-spec state__bb_add(state(), label(), bb()) -> state().
 
 state__bb_add(S=#state{cfg=Cfg}, Label, BB) ->
   NewCfg = hipe_icode_cfg:bb_add(Cfg, Label, BB),
@@ -1708,7 +1698,7 @@ state__info_in(S, Label) ->
   state__info(S, {Label, in}).
 
 state__info(#state{info_map=IM}, Key) ->
-  gb_trees:get(Key, IM).
+  maps:get(Key, IM).
 
 state__update_info(State, LabelInfo, Rewrite) ->
   update_info(LabelInfo, State, [], Rewrite).
@@ -1729,62 +1719,58 @@ update_info([], State, LabelAcc, _Rewrite) ->
 
 state__info_in_update(S=#state{info_map=IM,liveness=Liveness}, Label, Info) ->
   LabelIn = {Label, in},
-  case gb_trees:lookup(LabelIn, IM) of
-    none -> 
+  case IM of
+    #{LabelIn := OldInfo} ->
+      OldVars = maps:keys(OldInfo),
+      case join_info_in(OldVars, OldInfo, Info) of
+	fixpoint ->
+	  fixpoint;
+	NewInfo ->
+	  S#state{info_map=IM#{LabelIn := NewInfo}}
+      end;
+    _ ->
       LiveIn = hipe_icode_ssa:ssa_liveness__livein(Liveness, Label),
       NamesLiveIn = [hipe_icode:var_name(Var) || Var <- LiveIn,
 						 hipe_icode:is_var(Var)],
-      OldInfo = gb_trees:empty(),
+      OldInfo = #{},
       case join_info_in(NamesLiveIn, OldInfo, Info) of
 	fixpoint -> 
-	  S#state{info_map=gb_trees:insert(LabelIn, OldInfo, IM)};
+	  S#state{info_map=IM#{LabelIn => OldInfo}};
 	NewInfo ->
-	  S#state{info_map=gb_trees:enter(LabelIn, NewInfo, IM)}
-      end;
-    {value, OldInfo} ->
-      OldVars = gb_trees:keys(OldInfo),
-      case join_info_in(OldVars, OldInfo, Info) of
-	fixpoint -> 
-	  fixpoint;
-	NewInfo ->
-	  S#state{info_map=gb_trees:update(LabelIn, NewInfo, IM)}
+	  S#state{info_map=IM#{LabelIn => NewInfo}}
       end
   end.
 
 join_info_in(Vars, OldInfo, NewInfo) ->
-  case join_info_in(Vars, OldInfo, NewInfo, gb_trees:empty(), false) of
+  case join_info_in(Vars, OldInfo, NewInfo, #{}, false) of
     {Res, true} -> Res;
     {_, false} -> fixpoint
   end.
   
 join_info_in([Var|Left], Info1, Info2, Acc, Changed) ->
-  Type1 = gb_trees:lookup(Var, Info1),
-  Type2 = gb_trees:lookup(Var, Info2),
-  case {Type1, Type2} of
-    {none, none} ->
-      NewTree = gb_trees:insert(Var, none_type(), Acc),
-      join_info_in(Left, Info1, Info2, NewTree, true);
-    {none, {value, Val}} ->
-      NewTree = gb_trees:insert(Var, Val, Acc),
-      join_info_in(Left, Info1, Info2, NewTree, true);
-    {{value, Val}, none} ->
-      NewTree = gb_trees:insert(Var, Val, Acc),
+  case {Info1, Info2} of
+    {#{Var := Val}, #{Var := Val}} ->
+      NewTree = Acc#{Var => Val},
       join_info_in(Left, Info1, Info2, NewTree, Changed);
-    {{value, Val}, {value, Val}} ->
-      NewTree = gb_trees:insert(Var, Val, Acc),
-      join_info_in(Left, Info1, Info2, NewTree, Changed);
-    {{value, Val1}, {value, Val2}} ->
-      NewVal = 
+    {#{Var := Val1}, #{Var := Val2}} ->
+      {NewChanged, NewVal} =
 	case sup(Val1, Val2) of
 	  Val1 ->
-	    NewChanged = Changed,
-	    Val1;
+	    {Changed, Val1};
 	  Val ->
-	    NewChanged = true,
-	    Val
+	    {true, Val}
 	end,
-      NewTree = gb_trees:insert(Var, NewVal, Acc),
-      join_info_in(Left, Info1, Info2, NewTree, NewChanged)
+      NewTree = Acc#{Var => NewVal},
+      join_info_in(Left, Info1, Info2, NewTree, NewChanged);
+    {_, #{Var := Val}} ->
+      NewTree = Acc#{Var => Val},
+      join_info_in(Left, Info1, Info2, NewTree, true);
+    {#{Var := Val}, _} ->
+      NewTree = Acc#{Var => Val},
+      join_info_in(Left, Info1, Info2, NewTree, Changed);
+    {_, _} ->
+      NewTree = Acc#{Var => none_type()},
+      join_info_in(Left, Info1, Info2, NewTree, true)
   end;
 join_info_in([], _Info1, _Info2, Acc, NewChanged) ->
   {Acc, NewChanged}.
@@ -1796,7 +1782,7 @@ enter_defines([], Info) -> Info.
 enter_define({PossibleVar, Range = #range{}}, Info) ->
   case hipe_icode:is_var(PossibleVar) of
     true -> 
-      gb_trees:enter(hipe_icode:var_name(PossibleVar), Range, Info);
+      Info#{hipe_icode:var_name(PossibleVar) => Range};
     false ->
       Info
   end;
@@ -1805,7 +1791,7 @@ enter_define(PossibleVar, Info) ->
     true -> 
       case hipe_icode:variable_annotation(PossibleVar) of
 	{range_anno, #ann{range=Range}, _} ->
-	   gb_trees:enter(hipe_icode:var_name(PossibleVar), Range, Info);
+	   Info#{hipe_icode:var_name(PossibleVar) => Range};
 	_ ->
 	  Info
       end;
@@ -1820,11 +1806,10 @@ enter_vals(Ins, Info) ->
 lookup(PossibleVar, Info) ->
   case hipe_icode:is_var(PossibleVar) of
     true -> 
-      case gb_trees:lookup(hipe_icode:var_name(PossibleVar), Info) of
-	none ->
-	  none_type();
-	{value, Val} ->
-	  Val
+      PossibleVarName = hipe_icode:var_name(PossibleVar),
+      case Info of
+	#{PossibleVarName := Val} -> Val;
+	_ -> none_type()
       end;
     false ->
       none_type()
@@ -1838,10 +1823,10 @@ lookup(PossibleVar, Info) ->
 init_work(State) ->
   %% Labels = hipe_icode_cfg:reverse_postorder(state__cfg(State)),
   Labels = [hipe_icode_cfg:start_label(state__cfg(State))],
-  {Labels, [], sets:from_list(Labels)}.
+  {Labels, [], set_from_list(Labels)}.
 
 get_work({[Label|Left], List, Set}) ->
-  NewWork = {Left, List, sets:del_element(Label, Set)},
+  NewWork = {Left, List, maps:remove(Label, Set)},
   {Label, NewWork};
 get_work({[], [], _Set}) ->
   fixpoint;
@@ -1849,12 +1834,12 @@ get_work({[], List, Set}) ->
   get_work({lists:reverse(List), [], Set}).
 
 add_work(Work = {List1, List2, Set}, [Label|Left]) ->
-  case sets:is_element(Label, Set) of
-    true ->
+  case Set of
+    #{Label := _} ->
       add_work(Work, Left);
-    false ->
+    _ ->
       %% io:format("Adding work: ~w\n", [Label]),
-      add_work({List1, [Label|List2], sets:add_element(Label, Set)}, Left)
+      add_work({List1, [Label|List2], Set#{Label => []}}, Left)
   end;
 add_work(Work, []) ->
   Work.
@@ -1969,3 +1954,21 @@ next_down_limit(X) when is_integer(X), X > -16#8000000 -> -16#8000000;
 next_down_limit(X) when is_integer(X), X > -16#80000000 -> -16#80000000;
 next_down_limit(X) when is_integer(X), X > -16#800000000000000 -> -16#800000000000000;
 next_down_limit(_X) -> neg_inf.
+
+%%--------------------------------------------------------------------
+%% Sets
+
+-type set(E) :: #{E => []}.
+
+set_from_list([]) -> #{};
+set_from_list(L) ->
+  maps:from_list([{E, []} || E <- L]).
+
+not_visited([], _) -> [];
+not_visited([E|T], M) ->
+  case M of
+    #{E := []} -> not_visited(T, M);
+    _ -> [E|not_visited(T, M)]
+  end.
+
+set_union(A, B) -> maps:merge(A, B).

@@ -41,21 +41,21 @@
   centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
   close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
-  findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,getBackgroundColour/1,
-  getBackgroundStyle/1,getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,
-  getChildren/1,getClientSize/1,getContainingSizer/1,getCursor/1,getDropTarget/1,
-  getEventHandler/1,getExtraStyle/1,getFont/1,getForegroundColour/1,
-  getGrandParent/1,getHandle/1,getHelpText/1,getId/1,getMaxSize/1,getMinSize/1,
-  getName/1,getParent/1,getPosition/1,getRect/1,getScreenPosition/1,
-  getScreenRect/1,getScrollPos/2,getScrollRange/2,getScrollThumb/2,
-  getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,getToolTip/1,
-  getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,getWindowVariant/1,
-  hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,hide/1,inheritAttributes/1,
-  initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,isExposed/2,
-  isExposed/3,isExposed/5,isRetained/1,isShown/1,isTopLevel/1,layout/1,
-  lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,move/3,move/4,
-  moveAfterInTabOrder/2,moveBeforeInTabOrder/2,navigate/1,navigate/2,
-  pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,popEventHandler/2,
+  dragAcceptFiles/2,findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,
+  getBackgroundColour/1,getBackgroundStyle/1,getBestSize/1,getCaret/1,
+  getCharHeight/1,getCharWidth/1,getChildren/1,getClientSize/1,getContainingSizer/1,
+  getCursor/1,getDropTarget/1,getEventHandler/1,getExtraStyle/1,getFont/1,
+  getForegroundColour/1,getGrandParent/1,getHandle/1,getHelpText/1,
+  getId/1,getMaxSize/1,getMinSize/1,getName/1,getParent/1,getPosition/1,
+  getRect/1,getScreenPosition/1,getScreenRect/1,getScrollPos/2,getScrollRange/2,
+  getScrollThumb/2,getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,
+  getToolTip/1,getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,
+  getWindowVariant/1,hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,
+  hide/1,inheritAttributes/1,initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,
+  isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,isTopLevel/1,
+  layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,
+  move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,navigate/1,
+  navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,popEventHandler/2,
   popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,refresh/2,refreshRect/2,
   refreshRect/3,releaseMouse/1,removeChild/2,reparent/2,screenToClient/1,
   screenToClient/2,scrollLines/2,scrollPages/2,scrollWindow/3,scrollWindow/4,
@@ -98,7 +98,7 @@ new(Style)
 -spec append(This, Menu, Title) -> boolean() when
 	This::wxMenuBar(), Menu::wxMenu:wxMenu(), Title::unicode:chardata().
 append(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=MenuT,ref=MenuRef},Title)
- when is_list(Title) ->
+ when ?is_chardata(Title) ->
   ?CLASS(ThisT,wxMenuBar),
   ?CLASS(MenuT,wxMenu),
   Title_UC = unicode:characters_to_binary([Title,0]),
@@ -106,7 +106,7 @@ append(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=MenuT,ref=MenuRef},Title)
   <<ThisRef:32/?UI,MenuRef:32/?UI,(byte_size(Title_UC)):32/?UI,(Title_UC)/binary, 0:(((8- ((4+byte_size(Title_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarcheck">external documentation</a>.
--spec check(This, Itemid, Check) -> ok when
+-spec check(This, Itemid, Check) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), Check::boolean().
 check(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Check)
  when is_integer(Itemid),is_boolean(Check) ->
@@ -125,7 +125,7 @@ enable(This)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarenable">external documentation</a>.
 -spec enable(This, [Option]) -> boolean() when
 	This::wxMenuBar(),
-	Option :: {enable, boolean()}.
+	Option :: {'enable', boolean()}.
 enable(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxMenuBar),
@@ -136,7 +136,7 @@ enable(#wx_ref{type=ThisT,ref=ThisRef}, Options)
   <<ThisRef:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarenable">external documentation</a>.
--spec enable(This, Itemid, Enable) -> ok when
+-spec enable(This, Itemid, Enable) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), Enable::boolean().
 enable(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Enable)
  when is_integer(Itemid),is_boolean(Enable) ->
@@ -145,7 +145,7 @@ enable(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Enable)
   <<ThisRef:32/?UI,Itemid:32/?UI,(wxe_util:from_bool(Enable)):32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarenabletop">external documentation</a>.
--spec enableTop(This, Pos, Flag) -> ok when
+-spec enableTop(This, Pos, Flag) -> 'ok' when
 	This::wxMenuBar(), Pos::integer(), Flag::boolean().
 enableTop(#wx_ref{type=ThisT,ref=ThisRef},Pos,Flag)
  when is_integer(Pos),is_boolean(Flag) ->
@@ -157,7 +157,7 @@ enableTop(#wx_ref{type=ThisT,ref=ThisRef},Pos,Flag)
 -spec findMenu(This, Title) -> integer() when
 	This::wxMenuBar(), Title::unicode:chardata().
 findMenu(#wx_ref{type=ThisT,ref=ThisRef},Title)
- when is_list(Title) ->
+ when ?is_chardata(Title) ->
   ?CLASS(ThisT,wxMenuBar),
   Title_UC = unicode:characters_to_binary([Title,0]),
   wxe_util:call(?wxMenuBar_FindMenu,
@@ -167,7 +167,7 @@ findMenu(#wx_ref{type=ThisT,ref=ThisRef},Title)
 -spec findMenuItem(This, MenuString, ItemString) -> integer() when
 	This::wxMenuBar(), MenuString::unicode:chardata(), ItemString::unicode:chardata().
 findMenuItem(#wx_ref{type=ThisT,ref=ThisRef},MenuString,ItemString)
- when is_list(MenuString),is_list(ItemString) ->
+ when ?is_chardata(MenuString),?is_chardata(ItemString) ->
   ?CLASS(ThisT,wxMenuBar),
   MenuString_UC = unicode:characters_to_binary([MenuString,0]),
   ItemString_UC = unicode:characters_to_binary([ItemString,0]),
@@ -239,7 +239,7 @@ getMenuCount(#wx_ref{type=ThisT,ref=ThisRef}) ->
 -spec insert(This, Pos, Menu, Title) -> boolean() when
 	This::wxMenuBar(), Pos::integer(), Menu::wxMenu:wxMenu(), Title::unicode:chardata().
 insert(#wx_ref{type=ThisT,ref=ThisRef},Pos,#wx_ref{type=MenuT,ref=MenuRef},Title)
- when is_integer(Pos),is_list(Title) ->
+ when is_integer(Pos),?is_chardata(Title) ->
   ?CLASS(ThisT,wxMenuBar),
   ?CLASS(MenuT,wxMenu),
   Title_UC = unicode:characters_to_binary([Title,0]),
@@ -285,7 +285,7 @@ remove(#wx_ref{type=ThisT,ref=ThisRef},Pos)
 -spec replace(This, Pos, Menu, Title) -> wxMenu:wxMenu() when
 	This::wxMenuBar(), Pos::integer(), Menu::wxMenu:wxMenu(), Title::unicode:chardata().
 replace(#wx_ref{type=ThisT,ref=ThisRef},Pos,#wx_ref{type=MenuT,ref=MenuRef},Title)
- when is_integer(Pos),is_list(Title) ->
+ when is_integer(Pos),?is_chardata(Title) ->
   ?CLASS(ThisT,wxMenuBar),
   ?CLASS(MenuT,wxMenu),
   Title_UC = unicode:characters_to_binary([Title,0]),
@@ -293,47 +293,47 @@ replace(#wx_ref{type=ThisT,ref=ThisRef},Pos,#wx_ref{type=MenuT,ref=MenuRef},Titl
   <<ThisRef:32/?UI,Pos:32/?UI,MenuRef:32/?UI,(byte_size(Title_UC)):32/?UI,(Title_UC)/binary, 0:(((8- ((0+byte_size(Title_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsethelpstring">external documentation</a>.
--spec setHelpString(This, Itemid, HelpString) -> ok when
+-spec setHelpString(This, Itemid, HelpString) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), HelpString::unicode:chardata().
 setHelpString(#wx_ref{type=ThisT,ref=ThisRef},Itemid,HelpString)
- when is_integer(Itemid),is_list(HelpString) ->
+ when is_integer(Itemid),?is_chardata(HelpString) ->
   ?CLASS(ThisT,wxMenuBar),
   HelpString_UC = unicode:characters_to_binary([HelpString,0]),
   wxe_util:cast(?wxMenuBar_SetHelpString,
   <<ThisRef:32/?UI,Itemid:32/?UI,(byte_size(HelpString_UC)):32/?UI,(HelpString_UC)/binary, 0:(((8- ((4+byte_size(HelpString_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsetlabel">external documentation</a>.
--spec setLabel(This, S) -> ok when
+-spec setLabel(This, S) -> 'ok' when
 	This::wxMenuBar(), S::unicode:chardata().
 setLabel(#wx_ref{type=ThisT,ref=ThisRef},S)
- when is_list(S) ->
+ when ?is_chardata(S) ->
   ?CLASS(ThisT,wxMenuBar),
   S_UC = unicode:characters_to_binary([S,0]),
   wxe_util:cast(?wxMenuBar_SetLabel_1,
   <<ThisRef:32/?UI,(byte_size(S_UC)):32/?UI,(S_UC)/binary, 0:(((8- ((0+byte_size(S_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsetlabel">external documentation</a>.
--spec setLabel(This, Itemid, Label) -> ok when
+-spec setLabel(This, Itemid, Label) -> 'ok' when
 	This::wxMenuBar(), Itemid::integer(), Label::unicode:chardata().
 setLabel(#wx_ref{type=ThisT,ref=ThisRef},Itemid,Label)
- when is_integer(Itemid),is_list(Label) ->
+ when is_integer(Itemid),?is_chardata(Label) ->
   ?CLASS(ThisT,wxMenuBar),
   Label_UC = unicode:characters_to_binary([Label,0]),
   wxe_util:cast(?wxMenuBar_SetLabel_2,
   <<ThisRef:32/?UI,Itemid:32/?UI,(byte_size(Label_UC)):32/?UI,(Label_UC)/binary, 0:(((8- ((4+byte_size(Label_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxmenubar.html#wxmenubarsetlabeltop">external documentation</a>.
--spec setLabelTop(This, Pos, Label) -> ok when
+-spec setLabelTop(This, Pos, Label) -> 'ok' when
 	This::wxMenuBar(), Pos::integer(), Label::unicode:chardata().
 setLabelTop(#wx_ref{type=ThisT,ref=ThisRef},Pos,Label)
- when is_integer(Pos),is_list(Label) ->
+ when is_integer(Pos),?is_chardata(Label) ->
   ?CLASS(ThisT,wxMenuBar),
   Label_UC = unicode:characters_to_binary([Label,0]),
   wxe_util:cast(?wxMenuBar_SetLabelTop,
   <<ThisRef:32/?UI,Pos:32/?UI,(byte_size(Label_UC)):32/?UI,(Label_UC)/binary, 0:(((8- ((4+byte_size(Label_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxMenuBar()) -> ok.
+-spec destroy(This::wxMenuBar()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxMenuBar),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
@@ -649,6 +649,8 @@ fitInside(This) -> wxWindow:fitInside(This).
 fit(This) -> wxWindow:fit(This).
 %% @hidden
 findWindow(This,Winid) -> wxWindow:findWindow(This,Winid).
+%% @hidden
+dragAcceptFiles(This,Accept) -> wxWindow:dragAcceptFiles(This,Accept).
 %% @hidden
 disable(This) -> wxWindow:disable(This).
 %% @hidden

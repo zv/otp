@@ -2,7 +2,7 @@
 %% -*- erlang -*-
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010-2011. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ preloaded(TopDir) ->
 %% It's OK if too much data is generated as long as all applications
 %% and all modules are mentioned.
 appmods(D) ->
-    ErlFiles = filelib:wildcard(filename:join([D,"src","*.erl"])),
+    ErlFiles = filelib:wildcard(filename:join([D,"src","**","*.erl"])),
     AppV = filename:basename(D),
     App = case string:rstr(AppV, "-") of
               0 -> AppV;

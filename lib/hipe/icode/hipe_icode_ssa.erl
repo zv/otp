@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2002-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2002-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -34,13 +34,16 @@
 -define(LIVENESS, hipe_icode_liveness).
 -define(LIVENESS_NEEDED, true).
 
+-export_type([liveness/0]).
+
 -include("hipe_icode.hrl").
 -include("../ssa/hipe_ssa.inc").
 
 %% Declarations for exported functions which are Icode-specific.
--spec ssa_liveness__analyze(#cfg{}) -> gb_trees:tree().
--spec ssa_liveness__livein(_, icode_lbl()) -> [#icode_variable{}].
-%% -spec ssa_liveness__livein(_, icode_lbl(), _) -> [#icode_var{}].
+-opaque liveness() :: liveness(icode_lbl(), #icode_variable{}).
+-spec ssa_liveness__analyze(#cfg{}) -> liveness().
+-spec ssa_liveness__livein(liveness(), icode_lbl()) -> [#icode_variable{}].
+%% -spec ssa_liveness__livein(liveness(), icode_lbl(), _) -> [#icode_var{}].
 
 %%----------------------------------------------------------------------
 %% Auxiliary operations which seriously differ between Icode and RTL.

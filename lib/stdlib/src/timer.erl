@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1996-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1996-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -165,7 +165,7 @@ tc(F) ->
     T1 = erlang:monotonic_time(),
     Val = F(),
     T2 = erlang:monotonic_time(),
-    Time = erlang:convert_time_unit(T2 - T1, native, micro_seconds),
+    Time = erlang:convert_time_unit(T2 - T1, native, microsecond),
     {Time, Val}.
 
 %%
@@ -180,7 +180,7 @@ tc(F, A) ->
     T1 = erlang:monotonic_time(),
     Val = apply(F, A),
     T2 = erlang:monotonic_time(),
-    Time = erlang:convert_time_unit(T2 - T1, native, micro_seconds),
+    Time = erlang:convert_time_unit(T2 - T1, native, microsecond),
     {Time, Val}.
 
 %%
@@ -196,7 +196,7 @@ tc(M, F, A) ->
     T1 = erlang:monotonic_time(),
     Val = apply(M, F, A),
     T2 = erlang:monotonic_time(),
-    Time = erlang:convert_time_unit(T2 - T1, native, micro_seconds),
+    Time = erlang:convert_time_unit(T2 - T1, native, microsecond),
     {Time, Val}.
 
 %%

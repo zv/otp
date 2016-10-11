@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 1996-2014. All Rights Reserved.
+ * Copyright Ericsson AB 1996-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1094,7 +1094,7 @@ BIF_RETTYPE ets_insert_2(BIF_ALIST_2)
 
     CHECK_TABLES();
 
-    /* Write lock table if more than one object to keep atomicy */
+    /* Write lock table if more than one object to keep atomicity */
     kind = ((is_list(BIF_ARG_2) && CDR(list_val(BIF_ARG_2)) != NIL)
 	    ? LCK_WRITE : LCK_WRITE_REC);
 
@@ -1164,7 +1164,7 @@ BIF_RETTYPE ets_insert_new_2(BIF_ALIST_2)
 	    Eterm lookup_ret;
 	    DbTableMethod* meth;
 
-	    /* More than one object, use LCK_WRITE to keep atomicy */
+	    /* More than one object, use LCK_WRITE to keep atomicity */
 	    kind = LCK_WRITE;
 	    tb = db_get_table(BIF_P, BIF_ARG_1, DB_WRITE, kind);
 	    if (tb == NULL) {
@@ -1773,15 +1773,9 @@ BIF_RETTYPE ets_delete_1(BIF_ALIST_1)
 	 * (it looks like an continuation pointer), but that is will crash the
 	 * emulator if this BIF is call traced.
 	 */
-#if HALFWORD_HEAP
-	Eterm *hp = HAlloc(BIF_P, 3);
-	hp[0] = make_pos_bignum_header(2);
-	*((UWord *) (UWord) (hp+1)) = (UWord) tb;
-#else
 	Eterm *hp = HAlloc(BIF_P, 2);
 	hp[0] = make_pos_bignum_header(1);
 	hp[1] = (Eterm) tb;
-#endif
 	BIF_TRAP1(&ets_delete_continue_exp, BIF_P, make_big(hp));
     }
     else {
@@ -1837,7 +1831,7 @@ BIF_RETTYPE ets_give_away_3(BIF_ALIST_3)
 			     tb->common.id,
 			     from_pid,
 			     BIF_ARG_3), 
-		      0);
+                      0);
     erts_smp_proc_unlock(to_proc, to_locks);
     UnUseTmpHeap(5,BIF_P);
     BIF_RET(am_true);
@@ -2839,7 +2833,8 @@ BIF_RETTYPE ets_match_spec_run_r_3(BIF_ALIST_3)
 	    BIF_TRAP3(bif_export[BIF_ets_match_spec_run_r_3],
 		      BIF_P,lst,BIF_ARG_2,ret);
 	}
-	res = db_prog_match(BIF_P, mp, CAR(list_val(lst)), NULL, NULL, 0,
+	res = db_prog_match(BIF_P, BIF_P,
+                            mp, CAR(list_val(lst)), NULL, 0,
 			    ERTS_PAM_COPY_RESULT, &dummy);
 	if (is_value(res)) {
 	    hp = HAlloc(BIF_P, 2);
@@ -3216,7 +3211,7 @@ retry:
 			     tb->common.id,
 			     p->common.id,
 			     heir_data), 
-		      0);
+                      0);
     erts_smp_proc_unlock(to_proc, to_locks);
     return !0;
 }
@@ -3467,7 +3462,7 @@ static void fix_table_locked(Process* p, DbTable* tb)
     fix = tb->common.fixations;
     if (fix == NULL) {
 	tb->common.time.monotonic
-	    = erts_get_monotonic_time(ERTS_PROC_GET_SCHDATA(p));
+	    = erts_get_monotonic_time(erts_proc_sched_data(p));
 	tb->common.time.offset = erts_get_time_offset();
     }
     else {
@@ -3651,11 +3646,8 @@ static BIF_RETTYPE ets_delete_trap(BIF_ALIST_1)
     Eterm* ptr = big_val(cont);
     DbTable *tb = *((DbTable **) (UWord) (ptr + 1));
 
-#if HALFWORD_HEAP
-    ASSERT(*ptr == make_pos_bignum_header(2));
-#else
     ASSERT(*ptr == make_pos_bignum_header(1));
-#endif
+
     db_lock(tb, LCK_WRITE);
     trap = free_table_cont(p, tb, 0, 1);
     db_unlock(tb, LCK_WRITE);
@@ -3986,6 +3978,36 @@ erts_ets_colliding_names(Process* p, Eterm name, Uint cnt)
     return list;
 }
 
+/*
+ * For testing only
+ * Retreive meta table size state
+ */
+Eterm erts_ets_get_meta_state(Process* p)
+{
+    Eterm* hp = HAlloc(p, 3);
+    return TUPLE2(hp,
+                  erts_ets_hash_get_memstate(p, &meta_pid_to_tab->hash),
+                  erts_ets_hash_get_memstate(p, &meta_pid_to_fixed_tab->hash));
+}
+/*
+ * For testing only
+ * Restore a previously retrieved meta table size state.
+ * We do this to suppress failed memory checks
+ * caused by the hysteresis of meta tables grow/shrink limits.
+ */
+Eterm erts_ets_restore_meta_state(Process* p, Eterm meta_state)
+{
+    Eterm* tv;
+    Eterm* hp;
+    if (!is_tuple_arity(meta_state, 2))
+        return am_badarg;
+
+    tv = tuple_val(meta_state);
+    hp = HAlloc(p, 3);
+    return TUPLE2(hp,
+                  erts_ets_hash_restore_memstate(&meta_pid_to_tab->hash, tv[1]),
+                  erts_ets_hash_restore_memstate(&meta_pid_to_fixed_tab->hash, tv[2]));
+}
 
 #ifdef HARDDEBUG   /* Here comes some debug functions */
 

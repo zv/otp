@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -30,25 +30,27 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Connection states - RFC 4346 section 6.1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--record(connection_state, {
-	  security_parameters,
-	  compression_state,
-	  cipher_state,
-	  mac_secret,
-	  epoch, %% Only used by DTLS
-	  sequence_number,
-	  %% RFC 5746
-	  secure_renegotiation,
-	  client_verify_data,
-	  server_verify_data
-	 }).
+%% For documentation purposes are now maps in implementation
+%% -record(connection_state, {
+%% 	  security_parameters,
+%% 	  compression_state,
+%% 	  cipher_state,
+%% 	  mac_secret,
+%% 	  sequence_number,
+%% 	  %% RFC 5746
+%% 	  secure_renegotiation,
+%% 	  client_verify_data,
+%% 	  server_verify_data,
+%% 	  %% How to do BEAST mitigation?
+%% 	  beast_mitigation
+%% 	 }).
 
--record(connection_states, {
-	  current_read,
-	  pending_read,
-	  current_write,
-	  pending_write
-	 }).
+%% -record(connection_states, {
+%% 	  current_read,
+%% 	  pending_read,
+%% 	  current_write,
+%% 	  pending_write,
+%% 	 }).
 
 -record(security_parameters, {
           cipher_suite,

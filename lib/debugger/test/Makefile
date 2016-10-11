@@ -1,7 +1,7 @@
 #
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 1998-2012. All Rights Reserved.
+# Copyright Ericsson AB 1998-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ MODULES= \
 	lc_SUITE \
 	line_number_SUITE \
 	map_SUITE \
+	overridden_bif_SUITE \
 	record_SUITE \
 	trycatch_SUITE \
 	test_lib \
@@ -68,7 +69,7 @@ RELSYSDIR = $(RELEASE_PATH)/debugger_test
 # ----------------------------------------------------
 
 ERL_MAKE_FLAGS +=
-ERL_COMPILE_FLAGS += -I$(ERL_TOP)/lib/test_server/include
+ERL_COMPILE_FLAGS +=
 
 EBIN = .
 

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2004-2011. All Rights Reserved.
+%% Copyright Ericsson AB 2004-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ init(Id) ->
 
 %% @doc Handling call messages
 handle_call({stop,Id}, _From, #state{ id = Id, requests = Reqs } = State) ->
-    [gen_server:reply(Req, locker_stopped) || {Req,_ReqId} <- Reqs],
+    _ = [gen_server:reply(Req, locker_stopped) || {Req,_ReqId} <- Reqs],
     {stop, normal, stopped, State};
 handle_call({stop,_Id}, _From, State) ->
     {reply, stopped, State};

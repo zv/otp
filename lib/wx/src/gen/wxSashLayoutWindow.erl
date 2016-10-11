@@ -39,30 +39,31 @@
   centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
   close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
-  enable/1,enable/2,findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,
-  getBackgroundColour/1,getBackgroundStyle/1,getBestSize/1,getCaret/1,
-  getCharHeight/1,getCharWidth/1,getChildren/1,getClientSize/1,getContainingSizer/1,
-  getCursor/1,getDropTarget/1,getEventHandler/1,getExtraStyle/1,getFont/1,
-  getForegroundColour/1,getGrandParent/1,getHandle/1,getHelpText/1,
-  getId/1,getLabel/1,getMaxSize/1,getMaximumSizeX/1,getMaximumSizeY/1,
-  getMinSize/1,getMinimumSizeX/1,getMinimumSizeY/1,getName/1,getParent/1,
-  getPosition/1,getRect/1,getSashVisible/2,getScreenPosition/1,getScreenRect/1,
-  getScrollPos/2,getScrollRange/2,getScrollThumb/2,getSize/1,getSizer/1,
-  getTextExtent/2,getTextExtent/3,getToolTip/1,getUpdateRegion/1,getVirtualSize/1,
-  getWindowStyleFlag/1,getWindowVariant/1,hasCapture/1,hasScrollbar/2,
-  hasTransparentBackground/1,hide/1,inheritAttributes/1,initDialog/1,
-  invalidateBestSize/1,isDoubleBuffered/1,isEnabled/1,isExposed/2,isExposed/3,
-  isExposed/5,isRetained/1,isShown/1,isTopLevel/1,layout/1,lineDown/1,
-  lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,move/3,move/4,moveAfterInTabOrder/2,
-  moveBeforeInTabOrder/2,navigate/1,navigate/2,pageDown/1,pageUp/1,parent_class/1,
-  popEventHandler/1,popEventHandler/2,popupMenu/2,popupMenu/3,popupMenu/4,
-  raise/1,refresh/1,refresh/2,refreshRect/2,refreshRect/3,releaseMouse/1,
-  removeChild/2,reparent/2,screenToClient/1,screenToClient/2,scrollLines/2,
-  scrollPages/2,scrollWindow/3,scrollWindow/4,setAcceleratorTable/2,
-  setAutoLayout/2,setBackgroundColour/2,setBackgroundStyle/2,setCaret/2,
-  setClientSize/2,setClientSize/3,setContainingSizer/2,setCursor/2,
-  setDoubleBuffered/2,setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,
-  setFont/2,setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
+  dragAcceptFiles/2,enable/1,enable/2,findWindow/2,fit/1,fitInside/1,
+  freeze/1,getAcceleratorTable/1,getBackgroundColour/1,getBackgroundStyle/1,
+  getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,getChildren/1,
+  getClientSize/1,getContainingSizer/1,getCursor/1,getDropTarget/1,
+  getEventHandler/1,getExtraStyle/1,getFont/1,getForegroundColour/1,
+  getGrandParent/1,getHandle/1,getHelpText/1,getId/1,getLabel/1,getMaxSize/1,
+  getMaximumSizeX/1,getMaximumSizeY/1,getMinSize/1,getMinimumSizeX/1,
+  getMinimumSizeY/1,getName/1,getParent/1,getPosition/1,getRect/1,getSashVisible/2,
+  getScreenPosition/1,getScreenRect/1,getScrollPos/2,getScrollRange/2,
+  getScrollThumb/2,getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,
+  getToolTip/1,getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,
+  getWindowVariant/1,hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,
+  hide/1,inheritAttributes/1,initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,
+  isEnabled/1,isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,
+  isTopLevel/1,layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,
+  move/2,move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,
+  navigate/1,navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,
+  popEventHandler/2,popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,
+  refresh/2,refreshRect/2,refreshRect/3,releaseMouse/1,removeChild/2,
+  reparent/2,screenToClient/1,screenToClient/2,scrollLines/2,scrollPages/2,
+  scrollWindow/3,scrollWindow/4,setAcceleratorTable/2,setAutoLayout/2,
+  setBackgroundColour/2,setBackgroundStyle/2,setCaret/2,setClientSize/2,
+  setClientSize/3,setContainingSizer/2,setCursor/2,setDoubleBuffered/2,
+  setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,setFont/2,
+  setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
   setMaximumSizeX/2,setMaximumSizeY/2,setMinSize/2,setMinimumSizeX/2,
   setMinimumSizeY/2,setName/2,setOwnBackgroundColour/2,setOwnFont/2,
   setOwnForegroundColour/2,setPalette/2,setSashVisible/3,setScrollPos/3,
@@ -100,10 +101,10 @@ new(Parent)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxsashlayoutwindow.html#wxsashlayoutwindowwxsashlayoutwindow">external documentation</a>.
 -spec new(Parent, [Option]) -> wxSashLayoutWindow() when
 	Parent::wxWindow:wxWindow(),
-	Option :: {id, integer()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}.
+	Option :: {'id', integer()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}.
 new(#wx_ref{type=ParentT,ref=ParentRef}, Options)
  when is_list(Options) ->
   ?CLASS(ParentT,wxWindow),
@@ -127,10 +128,10 @@ create(This,Parent)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxsashlayoutwindow.html#wxsashlayoutwindowcreate">external documentation</a>.
 -spec create(This, Parent, [Option]) -> boolean() when
 	This::wxSashLayoutWindow(), Parent::wxWindow:wxWindow(),
-	Option :: {id, integer()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}.
+	Option :: {'id', integer()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}.
 create(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ParentT,ref=ParentRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxSashLayoutWindow),
@@ -164,7 +165,7 @@ getOrientation(#wx_ref{type=ThisT,ref=ThisRef}) ->
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxsashlayoutwindow.html#wxsashlayoutwindowsetalignment">external documentation</a>.
 %%<br /> Align = ?wxLAYOUT_NONE | ?wxLAYOUT_TOP | ?wxLAYOUT_LEFT | ?wxLAYOUT_RIGHT | ?wxLAYOUT_BOTTOM
--spec setAlignment(This, Align) -> ok when
+-spec setAlignment(This, Align) -> 'ok' when
 	This::wxSashLayoutWindow(), Align::wx:wx_enum().
 setAlignment(#wx_ref{type=ThisT,ref=ThisRef},Align)
  when is_integer(Align) ->
@@ -173,7 +174,7 @@ setAlignment(#wx_ref{type=ThisT,ref=ThisRef},Align)
   <<ThisRef:32/?UI,Align:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxsashlayoutwindow.html#wxsashlayoutwindowsetdefaultsize">external documentation</a>.
--spec setDefaultSize(This, Size) -> ok when
+-spec setDefaultSize(This, Size) -> 'ok' when
 	This::wxSashLayoutWindow(), Size::{W::integer(), H::integer()}.
 setDefaultSize(#wx_ref{type=ThisT,ref=ThisRef},{SizeW,SizeH})
  when is_integer(SizeW),is_integer(SizeH) ->
@@ -183,7 +184,7 @@ setDefaultSize(#wx_ref{type=ThisT,ref=ThisRef},{SizeW,SizeH})
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxsashlayoutwindow.html#wxsashlayoutwindowsetorientation">external documentation</a>.
 %%<br /> Orient = ?wxLAYOUT_HORIZONTAL | ?wxLAYOUT_VERTICAL
--spec setOrientation(This, Orient) -> ok when
+-spec setOrientation(This, Orient) -> 'ok' when
 	This::wxSashLayoutWindow(), Orient::wx:wx_enum().
 setOrientation(#wx_ref{type=ThisT,ref=ThisRef},Orient)
  when is_integer(Orient) ->
@@ -192,7 +193,7 @@ setOrientation(#wx_ref{type=ThisT,ref=ThisRef},Orient)
   <<ThisRef:32/?UI,Orient:32/?UI>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxSashLayoutWindow()) -> ok.
+-spec destroy(This::wxSashLayoutWindow()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxSashLayoutWindow),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
@@ -539,6 +540,8 @@ findWindow(This,Winid) -> wxWindow:findWindow(This,Winid).
 enable(This, Options) -> wxWindow:enable(This, Options).
 %% @hidden
 enable(This) -> wxWindow:enable(This).
+%% @hidden
+dragAcceptFiles(This,Accept) -> wxWindow:dragAcceptFiles(This,Accept).
 %% @hidden
 disable(This) -> wxWindow:disable(This).
 %% @hidden

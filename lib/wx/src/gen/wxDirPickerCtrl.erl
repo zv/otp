@@ -39,17 +39,18 @@
   centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
   close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
-  enable/1,enable/2,findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,
-  getBackgroundColour/1,getBackgroundStyle/1,getBestSize/1,getCaret/1,
-  getCharHeight/1,getCharWidth/1,getChildren/1,getClientSize/1,getContainingSizer/1,
-  getCursor/1,getDropTarget/1,getEventHandler/1,getExtraStyle/1,getFont/1,
-  getForegroundColour/1,getGrandParent/1,getHandle/1,getHelpText/1,
-  getId/1,getInternalMargin/1,getLabel/1,getMaxSize/1,getMinSize/1,getName/1,
-  getParent/1,getPickerCtrlProportion/1,getPosition/1,getRect/1,getScreenPosition/1,
-  getScreenRect/1,getScrollPos/2,getScrollRange/2,getScrollThumb/2,
-  getSize/1,getSizer/1,getTextCtrl/1,getTextCtrlProportion/1,getTextExtent/2,
-  getTextExtent/3,getToolTip/1,getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,
-  getWindowVariant/1,hasCapture/1,hasScrollbar/2,hasTextCtrl/1,hasTransparentBackground/1,
+  dragAcceptFiles/2,enable/1,enable/2,findWindow/2,fit/1,fitInside/1,
+  freeze/1,getAcceleratorTable/1,getBackgroundColour/1,getBackgroundStyle/1,
+  getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,getChildren/1,
+  getClientSize/1,getContainingSizer/1,getCursor/1,getDropTarget/1,
+  getEventHandler/1,getExtraStyle/1,getFont/1,getForegroundColour/1,
+  getGrandParent/1,getHandle/1,getHelpText/1,getId/1,getInternalMargin/1,
+  getLabel/1,getMaxSize/1,getMinSize/1,getName/1,getParent/1,getPickerCtrlProportion/1,
+  getPosition/1,getRect/1,getScreenPosition/1,getScreenRect/1,getScrollPos/2,
+  getScrollRange/2,getScrollThumb/2,getSize/1,getSizer/1,getTextCtrl/1,
+  getTextCtrlProportion/1,getTextExtent/2,getTextExtent/3,getToolTip/1,
+  getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,getWindowVariant/1,
+  hasCapture/1,hasScrollbar/2,hasTextCtrl/1,hasTransparentBackground/1,
   hide/1,inheritAttributes/1,initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,
   isEnabled/1,isExposed/2,isExposed/3,isExposed/5,isPickerCtrlGrowable/1,
   isRetained/1,isShown/1,isTextCtrlGrowable/1,isTopLevel/1,layout/1,
@@ -102,12 +103,12 @@ new(Parent,Id)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxdirpickerctrl.html#wxdirpickerctrlwxdirpickerctrl">external documentation</a>.
 -spec new(Parent, Id, [Option]) -> wxDirPickerCtrl() when
 	Parent::wxWindow:wxWindow(), Id::integer(),
-	Option :: {path, unicode:chardata()}
-		 | {message, unicode:chardata()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}
-		 | {validator, wx:wx_object()}.
+	Option :: {'path', unicode:chardata()}
+		 | {'message', unicode:chardata()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}
+		 | {'validator', wx:wx_object()}.
 new(#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
  when is_integer(Id),is_list(Options) ->
   ?CLASS(ParentT,wxWindow),
@@ -133,12 +134,12 @@ create(This,Parent,Id)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxdirpickerctrl.html#wxdirpickerctrlcreate">external documentation</a>.
 -spec create(This, Parent, Id, [Option]) -> boolean() when
 	This::wxDirPickerCtrl(), Parent::wxWindow:wxWindow(), Id::integer(),
-	Option :: {path, unicode:chardata()}
-		 | {message, unicode:chardata()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}
-		 | {validator, wx:wx_object()}.
+	Option :: {'path', unicode:chardata()}
+		 | {'message', unicode:chardata()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}
+		 | {'validator', wx:wx_object()}.
 create(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
  when is_integer(Id),is_list(Options) ->
   ?CLASS(ThisT,wxDirPickerCtrl),
@@ -163,17 +164,17 @@ getPath(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxdirpickerctrl.html#wxdirpickerctrlsetpath">external documentation</a>.
--spec setPath(This, Str) -> ok when
+-spec setPath(This, Str) -> 'ok' when
 	This::wxDirPickerCtrl(), Str::unicode:chardata().
 setPath(#wx_ref{type=ThisT,ref=ThisRef},Str)
- when is_list(Str) ->
+ when ?is_chardata(Str) ->
   ?CLASS(ThisT,wxDirPickerCtrl),
   Str_UC = unicode:characters_to_binary([Str,0]),
   wxe_util:cast(?wxDirPickerCtrl_SetPath,
   <<ThisRef:32/?UI,(byte_size(Str_UC)):32/?UI,(Str_UC)/binary, 0:(((8- ((0+byte_size(Str_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxDirPickerCtrl()) -> ok.
+-spec destroy(This::wxDirPickerCtrl()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxDirPickerCtrl),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
@@ -529,6 +530,8 @@ findWindow(This,Winid) -> wxWindow:findWindow(This,Winid).
 enable(This, Options) -> wxWindow:enable(This, Options).
 %% @hidden
 enable(This) -> wxWindow:enable(This).
+%% @hidden
+dragAcceptFiles(This,Accept) -> wxWindow:dragAcceptFiles(This,Accept).
 %% @hidden
 disable(This) -> wxWindow:disable(This).
 %% @hidden

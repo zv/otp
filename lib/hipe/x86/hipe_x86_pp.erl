@@ -2,7 +2,7 @@
 %%%
 %%% %CopyrightBegin%
 %%% 
-%%% Copyright Ericsson AB 2001-2009. All Rights Reserved.
+%%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %%% 
 %%% Licensed under the Apache License, Version 2.0 (the "License");
 %%% you may not use this file except in compliance with the License.
@@ -171,7 +171,7 @@ pp_insn(Dev, I, Pre) ->
     #pseudo_tailcall{'fun'=Fun, arity=Arity, stkargs=StkArgs, linkage=Linkage} ->
       io:format(Dev, "\tpseudo_tailcall ", []),
       pp_fun(Dev, Fun),
-      io:format(Dev, "~w (", [Arity]),
+      io:format(Dev, " ~w (", [Arity]),
       pp_args(Dev, StkArgs),
       io:format(Dev, ") ~w\n", [Linkage]);
     #pseudo_tailcall_prepare{} ->

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1999-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1999-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 %%
 -module(old_crypto_SUITE).
 
--include_lib("test_server/include/test_server.hrl").
+-include_lib("common_test/include/ct.hrl").
 
 -export([all/0, suite/0,groups/0,init_per_suite/1, end_per_suite/1, init_per_group/2,end_per_group/2, 
 	 init_per_testcase/2,
@@ -58,6 +58,7 @@
 	 des_cfb_iter/1,
 	 des_ecb/1,
 	 des3_cbc/1,
+	 des3_cbf/1,
 	 des3_cfb/1,
 	 rc2_cbc/1,
 	 aes_cfb/1,
@@ -102,7 +103,7 @@ groups() ->
        hmac_rfc2202, hmac_rfc4231_sha224, hmac_rfc4231_sha256,
        hmac_rfc4231_sha384, hmac_rfc4231_sha512,
        des_cbc, aes_cfb, aes_cbc,
-       des_cfb, des_cfb_iter, des3_cbc, des3_cfb, rc2_cbc,
+       des_cfb, des_cfb_iter, des3_cbc, des3_cbf, des3_cfb, rc2_cbc,
        aes_cbc_iter, aes_ctr, aes_ctr_stream, des_cbc_iter, des_ecb,
        rand_uniform_test, strong_rand_test,
        rsa_verify_test, dsa_verify_test, rsa_sign_test,
@@ -187,7 +188,9 @@ ldd_program() ->
 		    case os:find_executable("otool") of
 			false -> none;
 			Otool -> Otool ++ " -L"
-		    end
+		    end;
+		_ ->
+		    none
 	    end;
  	Ldd when is_list(Ldd) -> Ldd
     end.
@@ -967,6 +970,9 @@ des_cbc(doc) ->
 des_cbc(suite) ->
     [];
 des_cbc(Config) when is_list(Config) ->
+    if_supported(des_cbc, fun des_cbc_do/0).
+
+des_cbc_do() ->
     ?line Key =  hexstr2bin("0123456789abcdef"),
     ?line IVec = hexstr2bin("1234567890abcdef"),
     ?line Plain = "Now is the time for all ",
@@ -990,6 +996,9 @@ des_cbc_iter(doc) ->
 des_cbc_iter(suite) ->
     [];
 des_cbc_iter(Config) when is_list(Config) ->
+    if_supported(des_cbc, fun des_cbc_iter_do/0).
+
+des_cbc_iter_do() ->
     ?line Key =  hexstr2bin("0123456789abcdef"),
     ?line IVec = hexstr2bin("1234567890abcdef"),
     ?line Plain1 = "Now is the time ",
@@ -1009,6 +1018,9 @@ des_cfb(doc) ->
 des_cfb(suite) ->
     [];
 des_cfb(Config) when is_list(Config) ->
+    if_supported(des_cfb, fun des_cfb_do/0).
+
+des_cfb_do() ->
     ?line Key =  hexstr2bin("0123456789abcdef"),
     ?line IVec = hexstr2bin("1234567890abcdef"),
     ?line Plain = "Now is the",
@@ -1025,6 +1037,9 @@ des_cfb_iter(doc) ->
 des_cfb_iter(suite) ->
     [];
 des_cfb_iter(Config) when is_list(Config) ->
+    if_supported(des_cfb, fun des_cfb_iter_do/0).
+
+des_cfb_iter_do() ->
     ?line Key =  hexstr2bin("0123456789abcdef"),
     ?line IVec = hexstr2bin("1234567890abcdef"),
     ?line Plain1 = "Now i",
@@ -1043,6 +1058,9 @@ des_ecb(doc) ->
 des_ecb(suite) ->
     [];
 des_ecb(Config) when is_list(Config) ->
+    if_supported(des_ecb, fun des_ecb_do/0).
+
+des_ecb_do() ->
     ?line Key =  hexstr2bin("0123456789abcdef"),
     ?line Cipher1 = crypto:des_ecb_encrypt(Key, "Now is t"),
     ?line m(Cipher1, hexstr2bin("3fa40e8a984d4815")),
@@ -1062,7 +1080,9 @@ rc2_cbc(doc) ->
     "Encrypt and decrypt according to RC2 CBC and check the result. "
     "Example stripped out from public_key application test";
 rc2_cbc(Config) when is_list(Config) ->
-   
+    if_supported(rc2_cbc, fun rc2_cbc_do/0).
+
+rc2_cbc_do() ->
     Key = <<146,210,160,124,215,227,153,239,227,17,222,140,3,93,27,191>>,
     IV = <<72,91,135,182,25,42,35,210>>,
 
@@ -1079,6 +1099,9 @@ des3_cbc(doc) ->
 des3_cbc(suite) ->
     [];
 des3_cbc(Config) when is_list(Config) ->
+    if_supported(des3_cbc, fun des3_cbc_do/0).
+
+des3_cbc_do() ->
     ?line Key1 = hexstr2bin("0123456789abcdef"),
     ?line Key2 = hexstr2bin("fedcba9876543210"),
     ?line Key3 = hexstr2bin("0f2d4b6987a5c3e1"),
@@ -1110,6 +1133,19 @@ des3_cbc(Config) when is_list(Config) ->
 
 %%
 %%
+des3_cbf(doc) ->
+    "Encrypt and decrypt according to CFB 3DES, and check the result.";
+des3_cbf(suite) ->
+    [];
+des3_cbf(Config) when is_list(Config) ->
+    case openssl_version() of
+	V when V < 16#90705F -> {skipped,"OpenSSL version too old"};
+	_ ->
+	    if_supported(des3_cbf, fun des3_cfb_do/0)
+    end.
+
+%%
+%%
 des3_cfb(doc) ->
     "Encrypt and decrypt according to CFB 3DES, and check the result.";
 des3_cfb(suite) ->
@@ -1117,7 +1153,8 @@ des3_cfb(suite) ->
 des3_cfb(Config) when is_list(Config) ->
     case openssl_version() of
 	V when V < 16#90705F -> {skipped,"OpenSSL version too old"};
-	_ -> des3_cfb_do()
+	_ ->
+	    if_supported(des3_cfb, fun des3_cfb_do/0)
     end.
 
 des3_cfb_do() ->
@@ -2066,8 +2103,8 @@ exor_test(Config) when is_list(Config) ->
     B = <<1, 2, 3, 4, 5, 6, 7, 8, 9, 10>>,
     Z1 = zero_bin(B),
     Z1 = crypto:exor(B, B),
-    B1 = crypto:rand_bytes(100),
-    B2 = crypto:rand_bytes(100),
+    B1 = crypto:strong_rand_bytes(100),
+    B2 = crypto:strong_rand_bytes(100),
     Z2 = zero_bin(B1),
     Z2 = crypto:exor(B1, B1),
     Z2 = crypto:exor(B2, B2),
@@ -2082,6 +2119,9 @@ rc4_test(doc) ->
 rc4_test(suite) ->
     [];
 rc4_test(Config) when is_list(Config) ->
+    if_supported(rc4, fun rc4_test_do/0).
+
+rc4_test_do() ->
     CT1 = <<"Yo baby yo">>,
     R1 = <<118,122,68,110,157,166,141,212,139,39>>,
     K = "apaapa",
@@ -2097,6 +2137,9 @@ rc4_stream_test(doc) ->
 rc4_stream_test(suite) ->
     [];
 rc4_stream_test(Config) when is_list(Config) ->
+    if_supported(rc4, fun rc4_stream_test_do/0).
+
+rc4_stream_test_do() ->
     CT1 = <<"Yo ">>,
     CT2 = <<"baby yo">>,
     K = "apaapa",

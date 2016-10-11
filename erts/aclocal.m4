@@ -1,7 +1,7 @@
 dnl
 dnl %CopyrightBegin%
 dnl
-dnl Copyright Ericsson AB 1998-2015. All Rights Reserved.
+dnl Copyright Ericsson AB 1998-2016. All Rights Reserved.
 dnl
 dnl Licensed under the Apache License, Version 2.0 (the "License");
 dnl you may not use this file except in compliance with the License.
@@ -74,21 +74,6 @@ AC_ARG_VAR(erl_xcomp_clock_gettime_cpu_time, [clock_gettime() can be used for re
 AC_ARG_VAR(erl_xcomp_after_morecore_hook, [__after_morecore_hook can track malloc()s core memory usage: yes|no (only used when cross compiling)])
 AC_ARG_VAR(erl_xcomp_dlsym_brk_wrappers, [dlsym(RTLD_NEXT, _) brk wrappers can track malloc()s core memory usage: yes|no (only used when cross compiling)])
 
-dnl Cross compilation variables for OSE
-AC_ARG_VAR(erl_xcomp_ose_ldflags_pass1, [Linker flags for the OSE module (pass 1) (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_ldflags_pass2, [Linker flags for the OSE module (pass 2) (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_OSEROOT, [OSE installation root directory (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_STRIP, [Strip utility shipped with the OSE distribution(only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_LM_POST_LINK, [OSE postlink tool (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_LM_SET_CONF, [Sets the configuration for an OSE load module (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_LM_ELF_SIZE, [Prints the section size information for an OSE load module (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_LM_LCF, [OSE load module linker configuration file (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_BEAM_LM_CONF, [BEAM OSE load module default configuration file (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_EPMD_LM_CONF, [EPMD OSE load module default configuration file (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_RUN_ERL_LM_CONF, [run_erl_lm OSE load module default configuration file (only used when cross compiling for OSE)])
-AC_ARG_VAR(erl_xcomp_ose_CONFD, [OSE confd source file])
-AC_ARG_VAR(erl_xcomp_ose_CRT0_LM, [OSE crt0 lm source file])
-
 ])
 
 AC_DEFUN(ERL_XCOMP_SYSROOT_INIT,
@@ -143,13 +128,13 @@ MIXED_MSYS=no
 AC_MSG_CHECKING(for mixed cygwin or msys and native VC++ environment)
 if test "X$host" = "Xwin32" -a "x$GCC" != "xyes"; then
 	if test -x /usr/bin/msys-?.0.dll; then
-	        CFLAGS="-O2"
+	        CFLAGS="$CFLAGS -O2"
 		MIXED_MSYS=yes
 		AC_MSG_RESULT([MSYS and VC])
 		MIXED_MSYS_VC=yes
 		CPPFLAGS="$CPPFLAGS -DERTS_MIXED_MSYS_VC"
 	elif test -x /usr/bin/cygpath; then
-		CFLAGS="-O2"
+		CFLAGS="$CFLAGS -O2"
 		MIXED_CYGWIN=yes
 		AC_MSG_RESULT([Cygwin and VC])
 		MIXED_CYGWIN_VC=yes
@@ -177,7 +162,7 @@ if test "x$MIXED_MSYS" != "xyes"; then
    AC_MSG_CHECKING(for mixed cygwin and native MinGW environment)
    if test "X$host" = "Xwin32" -a "x$GCC" = x"yes"; then
 	if test -x /usr/bin/cygpath; then
-		CFLAGS="-O2"
+		CFLAGS="$CFLAGS -O2"
 		MIXED_CYGWIN=yes
 		AC_MSG_RESULT([yes])
 		MIXED_CYGWIN_MINGW=yes
@@ -503,8 +488,6 @@ AC_CACHE_VAL(ac_cv_sys_ipv6_support,
 #ifdef __WIN32__
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#elif __OSE__
-#error "no ipv6"
 #else
 #include <netinet/in.h>
 #endif],
@@ -517,8 +500,6 @@ else
 #ifdef __WIN32__
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#elif __OSE__
-#error "no ipv6"
 #else
 #include <netinet/in.h>
 #endif],
@@ -755,10 +736,23 @@ AC_DEFUN(ERL_MONOTONIC_CLOCK,
 	;;
   esac
 
+  clock_gettime_lib=""
+  AC_CHECK_LIB(rt, clock_gettime, [clock_gettime_lib="-lrt"])
+
+  save_LIBS="$LIBS"
+  LIBS="$LIBS $clock_gettime_lib"
+
+  if test "$LD_MAY_BE_WEAK" != "no"; then
+     trust_test="#error May not be there due to weak linking"
+  else
+     trust_test=""
+  fi
+
   AC_CACHE_CHECK([for clock_gettime(CLOCK_MONOTONIC_RAW, _)], erl_cv_clock_gettime_monotonic_raw,
   [
-       AC_TRY_COMPILE([
+       AC_TRY_LINK([
 #include <time.h>
+$trust_test
 		      ],
 		      [
     struct timespec ts;
@@ -774,8 +768,9 @@ AC_DEFUN(ERL_MONOTONIC_CLOCK,
   AC_CACHE_CHECK([for clock_gettime() with ${check_msg}monotonic clock type], erl_cv_clock_gettime_monotonic_$1,
   [
      for clock_type in $prefer_resolution_clock_gettime_monotonic $default_resolution_clock_gettime_monotonic $high_resolution_clock_gettime_monotonic $low_resolution_clock_gettime_monotonic; do
-       AC_TRY_COMPILE([
+       AC_TRY_LINK([
 #include <time.h>
+$trust_test
 		      ],
 		      [
     struct timespec ts;
@@ -790,7 +785,15 @@ AC_DEFUN(ERL_MONOTONIC_CLOCK,
      done
   ])
 
-  AC_CHECK_FUNCS([clock_getres clock_get_attributes gethrtime])
+  LIBS="$save_LIBS"
+
+  if test "$LD_MAY_BE_WEAK" != "no"; then
+     check_for_clock_getres=
+  else
+     check_for_clock_getres=clock_getres
+  fi
+
+  AC_CHECK_FUNCS([$check_for_clock_getres clock_get_attributes gethrtime])
   
   AC_CACHE_CHECK([for mach clock_get_time() with monotonic clock type], erl_cv_mach_clock_get_time_monotonic,
   [
@@ -859,7 +862,7 @@ AC_DEFUN(ERL_MONOTONIC_CLOCK,
 	    break
 	  fi
       done
-      AC_CHECK_LIB(rt, clock_gettime, [erl_monotonic_clock_lib="-lrt"])
+      erl_monotonic_clock_lib=$clock_gettime_lib
       ;;
     mach_clock_get_time)
       erl_monotonic_clock_id=SYSTEM_CLOCK
@@ -898,11 +901,24 @@ AC_DEFUN(ERL_WALL_CLOCK,
 	;;
   esac
 
+  clock_gettime_lib=""
+  AC_CHECK_LIB(rt, clock_gettime, [clock_gettime_lib="-lrt"])
+
+  save_LIBS="$LIBS"
+  LIBS="$LIBS $clock_gettime_lib"
+
+  if test "$LD_MAY_BE_WEAK" != "no"; then
+     trust_test="#error May not be there due to weak linking"
+  else
+     trust_test=""
+  fi
+
   AC_CACHE_CHECK([for clock_gettime() with ${check_msg}wall clock type], erl_cv_clock_gettime_wall_$1,
   [
      for clock_type in $prefer_resolution_clock_gettime_wall $default_resolution_clock_gettime_wall $high_resolution_clock_gettime_wall $low_resolution_clock_gettime_wall; do
-       AC_TRY_COMPILE([
+       AC_TRY_LINK([
 #include <time.h>
+$trust_test
 		      ],
 		      [
     struct timespec ts;
@@ -917,7 +933,15 @@ AC_DEFUN(ERL_WALL_CLOCK,
      done
   ])
 
-  AC_CHECK_FUNCS([clock_getres clock_get_attributes gettimeofday])
+  LIBS="$save_LIBS"
+
+  if test "$LD_MAY_BE_WEAK" != "no"; then
+     check_for_clock_getres=
+  else
+     check_for_clock_getres=clock_getres
+  fi
+
+  AC_CHECK_FUNCS([$check_for_clock_getres clock_get_attributes gettimeofday])
   
   AC_CACHE_CHECK([for mach clock_get_time() with wall clock type], erl_cv_mach_clock_get_time_wall,
   [
@@ -938,6 +962,7 @@ AC_DEFUN(ERL_WALL_CLOCK,
 			erl_cv_mach_clock_get_time_wall=no)
   ])
 
+  erl_wall_clock_lib=
   erl_wall_clock_low_resolution=no
   erl_wall_clock_id=
   case $1-$erl_cv_clock_gettime_wall_$1-$erl_cv_mach_clock_get_time_wall-$ac_cv_func_gettimeofday-$host_os in
@@ -951,6 +976,7 @@ AC_DEFUN(ERL_WALL_CLOCK,
       ;;
     *-CLOCK_*-*-*-*)
       erl_wall_clock_func=clock_gettime
+      erl_wall_clock_lib=$clock_gettime_lib
       erl_wall_clock_id=$erl_cv_clock_gettime_wall_$1
       for low_res_id in $low_resolution_clock_gettime_wall; do
       	  if test $erl_wall_clock_id = $low_res_id; then
@@ -991,12 +1017,6 @@ if test "X$host_os" = "Xwin32"; then
     THR_LIBS=
     THR_LIB_NAME=win32_threads
     THR_LIB_TYPE=win32_threads
-elif test "X$host_os" = "Xose"; then
-    AC_MSG_RESULT(yes)
-    THR_DEFS="-DOSE_THREADS"
-    THR_LIBS=
-    THR_LIB_NAME=ose_threads
-    THR_LIB_TYPE=ose_threads
 else
     AC_MSG_RESULT(no)
     THR_DEFS=
@@ -1583,22 +1603,9 @@ case "$THR_LIB_NAME" in
 	fi
 	;;
 
-    pthread|ose_threads)
-        case "$THR_LIB_NAME" in
-	     pthread)
-		ETHR_THR_LIB_BASE_DIR=pthread
-		AC_DEFINE(ETHR_PTHREADS, 1, [Define if you have pthreads])
-		;;
-	     ose_threads)
-		AC_DEFINE(ETHR_OSE_THREADS, 1,
-		   [Define if you have OSE style threads])
-		ETHR_THR_LIB_BASE_DIR=ose
-		AC_CHECK_HEADER(ose_spi/ose_spi.h,
-		  AC_DEFINE(HAVE_OSE_SPI_H, 1,
-		    [Define if you have the "ose_spi/ose_spi.h" header file.]))
-		;;
-	esac
-	if test "x$THR_LIB_NAME" = "xpthread"; then
+    pthread)
+	ETHR_THR_LIB_BASE_DIR=pthread
+	AC_DEFINE(ETHR_PTHREADS, 1, [Define if you have pthreads])
 	case $host_os in
 	    openbsd*)
 		# The default stack size is insufficient for our needs
@@ -1657,7 +1664,6 @@ case "$THR_LIB_NAME" in
 	    *) ;;
 	esac
 
-	fi
 	dnl We sometimes need ETHR_DEFS in order to find certain headers
 	dnl (at least for pthread.h on osf1).
 	saved_cppflags="$CPPFLAGS"
@@ -1702,7 +1708,6 @@ case "$THR_LIB_NAME" in
 	dnl
 	dnl Check for functions
 	dnl
-	if test "x$THR_LIB_NAME" = "xpthread"; then
 	AC_CHECK_FUNC(pthread_spin_lock, \
 			[ethr_have_native_spinlock=yes \
 			 AC_DEFINE(ETHR_HAVE_PTHREAD_SPIN_LOCK, 1, \
@@ -1720,7 +1725,7 @@ case "$THR_LIB_NAME" in
 	    AC_DEFINE(ETHR_HAVE_SCHED_YIELD, 1, [Define if you have the sched_yield() function.])
 	    AC_MSG_CHECKING([whether sched_yield() returns an int])
 	    sched_yield_ret_int=no
-	    AC_TRY_COMPILE([
+	    AC_TRY_LINK([
 				#ifdef ETHR_HAVE_SCHED_H
 				#include <sched.h>
 				#endif
@@ -1739,7 +1744,7 @@ case "$THR_LIB_NAME" in
 	    AC_DEFINE(ETHR_HAVE_PTHREAD_YIELD, 1, [Define if you have the pthread_yield() function.])
 	    AC_MSG_CHECKING([whether pthread_yield() returns an int])
 	    pthread_yield_ret_int=no
-	    AC_TRY_COMPILE([
+	    AC_TRY_LINK([
 				#if defined(ETHR_NEED_NPTL_PTHREAD_H)
 				#include <nptl/pthread.h>
 				#elif defined(ETHR_HAVE_MIT_PTHREAD_H)
@@ -1921,8 +1926,6 @@ case "$THR_LIB_NAME" in
              *) ;;
 	esac
 	CFLAGS=$old_CFLAGS
-
-        fi ## test "x$THR_LIB_NAME" = "xpthread"
 
 	if test "X$disable_native_ethr_impls" = "Xyes"; then
 	    ethr_have_native_atomics=no
@@ -2478,7 +2481,13 @@ if test $erl_monotonic_clock_low_resolution = yes; then
   AC_DEFINE(ERTS_HAVE_LOW_RESOLUTION_OS_MONOTONIC_LOW, [1], [Define if you have a low resolution OS monotonic clock])
 fi
 
-xrtlib="$erl_monotonic_clock_lib"
+xrtlib=
+if test "$erl_monotonic_clock_lib" != ""; then
+   xrtlib="$erl_monotonic_clock_lib"
+fi
+if test "$erl_wall_clock_lib" != ""; then
+   xrtlib="$erl_wall_clock_lib"
+fi
 if test "x$erl_monotonic_clock_id" != "x"; then
     AC_DEFINE_UNQUOTED(MONOTONIC_CLOCK_ID_STR, ["$erl_monotonic_clock_id"], [Define as a string of monotonic clock id to use])
     AC_DEFINE_UNQUOTED(MONOTONIC_CLOCK_ID, [$erl_monotonic_clock_id], [Define to monotonic clock id to use])

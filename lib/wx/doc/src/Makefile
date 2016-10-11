@@ -1,7 +1,7 @@
 #
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 2008-2012. All Rights Reserved.
+# Copyright Ericsson AB 2008-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,10 +63,15 @@ HTML_REF_MAN_FILE = $(HTMLDIR)/index.html
 
 TOP_PDF_FILE = $(PDFDIR)/$(APPLICATION)-$(VSN).pdf
 
+SPECS_FILES = $(XML_REF3_FILES:%.xml=$(SPECDIR)/specs_%.xml)
+
+TOP_SPECS_FILE = specs.xml
+
 # ----------------------------------------------------
 # FLAGS
 # ----------------------------------------------------
 XML_FLAGS +=
+SPECS_FLAGS = -I../../include -I../../src
 DVIPS_FLAGS +=
 
 # ----------------------------------------------------
@@ -111,6 +116,7 @@ clean clean_docs:
 	rm -rf  $(HTMLDIR)/*
 	rm -f $(MAN3DIR)/*
 	rm -f $(TOP_PDF_FILE) $(TOP_PDF_FILE:%.pdf=%.fo)
+	rm -f $(SPECDIR)/*
 	rm -f errs core *~ ../html/edoc-info
 	rm -f $(XML_REF3_FILES) $(XML_CHAPTER_FILES) *.html
 

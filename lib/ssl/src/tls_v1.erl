@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -209,9 +209,7 @@ suites(Minor) when Minor == 1; Minor == 2 ->
       ?TLS_DHE_DSS_WITH_AES_128_CBC_SHA,
       ?TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA,
       ?TLS_ECDH_RSA_WITH_AES_128_CBC_SHA,
-      ?TLS_RSA_WITH_AES_128_CBC_SHA,
-      ?TLS_DHE_RSA_WITH_DES_CBC_SHA,
-      ?TLS_RSA_WITH_DES_CBC_SHA
+      ?TLS_RSA_WITH_AES_128_CBC_SHA
     ];
 suites(3) ->
     [
@@ -300,9 +298,7 @@ default_signature_algs({3, 3} = Version) ->
 	       %% SHA
 	       {sha, ecdsa},
 	       {sha, rsa},
-	       {sha, dsa},
-	       %% MD5
-	       {md5, rsa}],
+	       {sha, dsa}],
     signature_algs(Version, Default);
 default_signature_algs(_) ->
     undefined.

@@ -4,7 +4,7 @@
 <chapter>
   <header>
     <copyright>
-      <year>2007</year><year>2013</year>
+      <year>2007</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -31,6 +31,35 @@
   </header>
   <p>This document describes the changes made to the EDoc
     application.</p>
+
+<section><title>Edoc 0.8</title>
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+	    <p>Improve types and specs in OTP documentation generated
+	    from Erlang source files. </p>
+          <p>
+	    Own Id: OTP-13720 Aux Id: ERL-120 </p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>Edoc 0.7.19</title>
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+	    <p> Handle typed record fields. </p>
+          <p>
+	    Own Id: OTP-13558</p>
+        </item>
+      </list>
+    </section>
+
+</section>
 
 <section><title>Edoc 0.7.18</title>
 

@@ -36,30 +36,12 @@ Here are the [instructions for submitting patches] [2].
 
 In short:
 
-*   We prefer to receive proposed updates via email on the
-    [`erlang-patches`] [3] mailing list or through a pull request.
+*   Submit your patch by opening a new Pull Request.
 
-*   Pull requests will be handled once everyday and there will be 
-    essential testing before we will take a decision on the outcome
-    of the request. If the essential testings fails, the pull request
-    will be closed and you will have to fix the problem and submit another
-    pull request when this is done.
+*   Go to the JIRA issue tracker at [bugs.erlang.org] [7] to
+    see reported issues which you can contribute to.
+    Search for issues with the status *Contribution Needed*.
 
-*   We merge all proposed updates to the `pu` (*proposed updates*) branch,
-    typically within one working day.
-
-*   At least once a day, the contents of the `pu` branch will be built on
-    several platforms (Linux, Solaris, Mac OS X, Windows, and so on) and
-    automatic test suites will be run. We will email you if any problems are
-    found.
-
-*   If a proposed change builds and passes the tests, it will be reviewed
-    by one or more members of the Erlang/OTP team at Ericsson. The reviewer
-    may suggest improvements that are needed before the change can be accepted
-    and merged.
-
-*   Once or twice a week, a status email called ["What's cooking in Erlang/OTP"] [4]
-    will be sent to the [`erlang-patches`] [3] mailing list.
 
 Bug Reports
 --------------------------
@@ -91,8 +73,9 @@ Copyright and License
 
 
    [1]: http://www.erlang.org
-   [2]: http://wiki.github.com/erlang/otp/submitting-patches
+   [2]: http://wiki.github.com/erlang/otp/contribution-guidelines
    [3]: http://www.erlang.org/static/doc/mailinglist.html
    [4]: http://erlang.github.com/otp/
    [5]: HOWTO/INSTALL.md
    [6]: https://github.com/erlang/otp/wiki/Bug-reports
+   [7]: http://bugs.erlang.org

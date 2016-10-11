@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2005-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2005-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@
 -define(privdir, "yecc_SUITE_priv").
 -define(t, test_server).
 -else.
--include_lib("test_server/include/test_server.hrl").
+-include_lib("common_test/include/ct.hrl").
 -define(datadir, ?config(data_dir, Config)).
 -define(privdir, ?config(priv_dir, Config)).
 -endif.
@@ -342,7 +342,7 @@ syntax(Config) when is_list(Config) ->
                               {L2,_,{bad_inline,{yeccpars2_2_,1}}}]}],
                    []} = compile:file(Parserfile1, [basic_validation,return]),
             ?line L1 = 31 + SzYeccPre,
-            ?line L2 = 38 + SzYeccPre
+            ?line L2 = 39 + SzYeccPre
     end(),
 
     %% Bad macro in action. OTP-7224.
@@ -360,7 +360,7 @@ syntax(Config) when is_list(Config) ->
                               {L2,_,{bad_inline,{yeccpars2_2_,1}}}]}],
                    []} = compile:file(Parserfile1, [basic_validation,return]),
             ?line L1 = 31 + SzYeccPre,
-            ?line L2 = 38 + SzYeccPre
+            ?line L2 = 39 + SzYeccPre
     end(),
 
     %% Check line numbers. OTP-7224.
@@ -1623,7 +1623,7 @@ otp_7292(Config) when is_list(Config) ->
                    [{_,[{16,_,{unused_function,{foo,0}}}]}]} = 
                 compile:file(Parserfile1, [basic_validation, return]),
             L1 = 41 + SzYeccPre,
-            L2 = 48 + SzYeccPre
+            L2 = 49 + SzYeccPre
     end(),
 
     YeccPre = filename:join(Dir, "yeccpre.hrl"),
@@ -1641,7 +1641,7 @@ otp_7292(Config) when is_list(Config) ->
                    [{_,[{16,_,{unused_function,{foo,0}}}]}]} = 
                 compile:file(Parserfile1, [basic_validation, return]),
             ?line L1 = 40 + SzYeccPre,
-            ?line L2 = 47 + SzYeccPre
+            ?line L2 = 48 + SzYeccPre
     end(),
 
     file:delete(YeccPre),
@@ -2009,7 +2009,7 @@ otp_11286(Config) when is_list(Config) ->
     Dir = ?privdir,
     UName = [1024] ++ "u",
     UDir = filename:join(Dir, UName),
-    ok = rpc:call(Node, file, make_dir, [UDir]),
+    _ = rpc:call(Node, file, make_dir, [UDir]),
 
     %% Note: Cannot use UName as filename since the filename is used
     %% as module name. To be fixed in R18.

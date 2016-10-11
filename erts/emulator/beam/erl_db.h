@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  * 
- * Copyright Ericsson AB 1996-2013. All Rights Reserved.
+ * Copyright Ericsson AB 1996-2016. All Rights Reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,6 +90,8 @@ extern Export ets_select_continue_exp;
 extern erts_smp_atomic_t erts_ets_misc_mem_size;
 
 Eterm erts_ets_colliding_names(Process*, Eterm name, Uint cnt);
+Eterm erts_ets_get_meta_state(Process* p);
+Eterm erts_ets_restore_meta_state(Process* p, Eterm target_state);
 
 Uint erts_db_get_max_tabs(void);
 
@@ -266,8 +268,6 @@ erts_db_free_nt(ErtsAlcType_t type, void *ptr, Uint size)
 }
 
 #endif /* #if ERTS_GLB_INLINE_INCL_FUNC_DEF */
-
-#undef ERTS_DB_ALC_MEM_UPDATE_
 
 #endif /* #if defined(ERTS_WANT_DB_INTERNAL__) && !defined(ERTS_HAVE_DB_INTERNAL__) */
 

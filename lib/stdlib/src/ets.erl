@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1996-2014. All Rights Reserved.
+%% Copyright Ericsson AB 1996-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -232,20 +232,20 @@ match(_) ->
 match_object(_, _) ->
     erlang:nif_error(undef).
 
--spec match_object(Tab, Pattern, Limit) -> {[Match], Continuation} |
+-spec match_object(Tab, Pattern, Limit) -> {[Object], Continuation} |
                                            '$end_of_table' when
       Tab :: tab(),
       Pattern :: match_pattern(),
       Limit :: pos_integer(),
-      Match :: [term()],
+      Object :: tuple(),
       Continuation :: continuation().
 
 match_object(_, _, _) ->
     erlang:nif_error(undef).
 
--spec match_object(Continuation) -> {[Match], Continuation} |
+-spec match_object(Continuation) -> {[Object], Continuation} |
                                     '$end_of_table' when
-      Match :: [term()],
+      Object :: tuple(),
       Continuation :: continuation().
 
 match_object(_) ->

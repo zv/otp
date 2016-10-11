@@ -1,7 +1,7 @@
 #
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 2001-2012. All Rights Reserved.
+# Copyright Ericsson AB 2001-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,7 +63,8 @@ MODULES=hipe_rtl_to_sparc \
 	hipe_sparc_ra_naive \
 	hipe_sparc_ra_postconditions \
 	hipe_sparc_ra_postconditions_fp \
-	hipe_sparc_registers
+	hipe_sparc_registers \
+	hipe_sparc_subst
 
 HRL_FILES=hipe_sparc.hrl
 ERL_FILES=$(MODULES:%=%.erl)
@@ -76,7 +77,7 @@ DOC_FILES= $(MODULES:%=$(DOCS)/%.html)
 
 include ../native.mk
 
-ERL_COMPILE_FLAGS += +warn_exported_vars
+ERL_COMPILE_FLAGS += -Werror +warn_export_vars
 
 # ----------------------------------------------------
 # Targets

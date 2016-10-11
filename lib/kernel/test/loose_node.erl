@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2004-2010. All Rights Reserved.
+%% Copyright Ericsson AB 2004-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -57,9 +57,16 @@
 %%
 
 stop(Node) when is_atom(Node) ->
+    erlang:monitor_node(Node, true),
     rpc:cast(Node, erlang, halt, []),
-    io:format("Stopped loose node ~p~n", [Node]),
-    ok.
+    receive
+	{nodedown, Node} ->
+	   io:format("Stopped loose node ~p~n", [Node]),
+	   ok
+    after 10000 ->
+	io:format("Failed to stop loose node: ~p~n", [Node]),
+	{error, node_not_stopped}
+    end.
 
 start(Name, Args) ->
     start(Name, Args, -1).

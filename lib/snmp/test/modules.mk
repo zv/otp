@@ -2,7 +2,7 @@
 
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 2004-2014. All Rights Reserved.
+# Copyright Ericsson AB 2004-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ SUITE_MODULES = \
 	snmp_agent_mibs_test \
 	snmp_agent_nfilter_test \
 	snmp_agent_test \
+	snmp_agent_conf_test \
 	snmp_agent_test_lib \
 	snmp_manager_config_test \
 	snmp_manager_user \

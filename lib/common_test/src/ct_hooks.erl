@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2004-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2004-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -408,7 +408,8 @@ catch_apply(M,F,A, Default) ->
 maybe_start_locker(Mod,GroupName,Opts) ->
     case lists:member(parallel,Opts) of
 	true ->
-	    {ok, _Pid} = ct_hooks_lock:start({Mod,GroupName});
+	    {ok, _Pid} = ct_hooks_lock:start({Mod,GroupName}),
+	    ok;
 	false ->
 	    ok
     end.

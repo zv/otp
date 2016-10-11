@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1999-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1999-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -155,9 +155,7 @@ share(Is0) ->
     Is = eliminate_fallthroughs(Is0, []),
     share_1(Is, #{}, [], []).
 
-share_1([{label,_}=Lbl|Is], Dict, [], Acc) ->
-    share_1(Is, Dict, [], [Lbl|Acc]);
-share_1([{label,L}=Lbl|Is], Dict0, Seq, Acc) ->
+share_1([{label,L}=Lbl|Is], Dict0, [_|_]=Seq, Acc) ->
     case maps:find(Seq, Dict0) of
 	error ->
 	    Dict = maps:put(Seq, L, Dict0),
@@ -167,10 +165,16 @@ share_1([{label,L}=Lbl|Is], Dict0, Seq, Acc) ->
     end;
 share_1([{func_info,_,_,_}=I|Is], _, [], Acc) ->
     reverse(Is, [I|Acc]);
+share_1([{'catch',_,_}=I|Is], Dict0, Seq, Acc) ->
+    Dict = clean_non_sharable(Dict0),
+    share_1(Is, Dict, [I|Seq], Acc);
 share_1([{'try',_,_}=I|Is], Dict0, Seq, Acc) ->
     Dict = clean_non_sharable(Dict0),
     share_1(Is, Dict, [I|Seq], Acc);
 share_1([{try_case,_}=I|Is], Dict0, Seq, Acc) ->
+    Dict = clean_non_sharable(Dict0),
+    share_1(Is, Dict, [I|Seq], Acc);
+share_1([{catch_end,_}=I|Is], Dict0, Seq, Acc) ->
     Dict = clean_non_sharable(Dict0),
     share_1(Is, Dict, [I|Seq], Acc);
 share_1([I|Is], Dict, Seq, Acc) ->
@@ -182,18 +186,18 @@ share_1([I|Is], Dict, Seq, Acc) ->
     end.
 
 clean_non_sharable(Dict) ->
-    %% We are passing in or out of a 'try' block. Remove
-    %% sequences that should not shared over the boundaries
-    %% of a 'try' block. Since the end of the sequence must match,
-    %% the only possible match between a sequence outside and
-    %% a sequence inside the 'try' block is a sequence that ends
-    %% with an instruction that causes an exception. Any sequence
-    %% that causes an exception must contain a line/1 instruction.
+    %% We are passing in or out of a 'catch' or 'try' block. Remove
+    %% sequences that should not be shared over the boundaries of the
+    %% block. Since the end of the sequence must match, the only
+    %% possible match between a sequence outside and a sequence inside
+    %% the 'catch'/'try' block is a sequence that ends with an
+    %% instruction that causes an exception. Any sequence that causes
+    %% an exception must contain a line/1 instruction.
     maps:filter(fun(K, _V) -> sharable_with_try(K) end, Dict).
 
 sharable_with_try([{line,_}|_]) ->
     %% This sequence may cause an exception and may potentially
-    %% match a sequence on the other side of the 'try' block
+    %% match a sequence on the other side of the 'catch'/'try' block
     %% boundary.
     false;
 sharable_with_try([_|Is]) ->
@@ -202,21 +206,18 @@ sharable_with_try([]) -> true.
 
 %% Eliminate all fallthroughs. Return the result reversed.
 
-eliminate_fallthroughs([I,{label,L}=Lbl|Is], Acc) ->
-    case is_unreachable_after(I) orelse is_label(I) of
+eliminate_fallthroughs([{label,L}=Lbl|Is], [I|_]=Acc) ->
+    case is_unreachable_after(I) of
 	false ->
 	    %% Eliminate fallthrough.
-	    eliminate_fallthroughs(Is, [Lbl,{jump,{f,L}},I|Acc]);
+	    eliminate_fallthroughs(Is, [Lbl,{jump,{f,L}}|Acc]);
 	true ->
-	    eliminate_fallthroughs(Is, [Lbl,I|Acc])
+	    eliminate_fallthroughs(Is, [Lbl|Acc])
     end;
 eliminate_fallthroughs([I|Is], Acc) ->
     eliminate_fallthroughs(Is, [I|Acc]);
 eliminate_fallthroughs([], Acc) -> Acc.
 
-is_label({label,_}) -> true;
-is_label(_) -> false.
-    
 %%%
 %%% (2) Move short code sequences ending in an instruction that causes an exit
 %%% to the end of the function.
@@ -266,17 +267,17 @@ extract_seq_1(_, _) -> no.
 %%% (3) (4) (5) (6) Jump and unreachable code optimizations.
 %%%
 
--record(st, {fc,				%Label for function class errors.
-	     entry,				%Entry label (must not be moved).
-	     mlbl,				%Moved labels.
-             labels :: cerl_sets:set()          %Set of referenced labels.
-	    }).
+-record(st,
+	{
+	  entry,		     %Entry label (must not be moved).
+	  mlbl,			     %Moved labels.
+	  labels :: cerl_sets:set()  %Set of referenced labels.
+	}).
 
-opt([{label,Fc}|_]=Is0, CLabel) ->
-    Lbls = initial_labels(Is0),
+opt(Is0, CLabel) ->
     find_fixpoint(fun(Is) ->
-			  St = #st{fc=Fc,entry=CLabel,mlbl=#{},
-				   labels=Lbls},
+			  Lbls = initial_labels(Is),
+			  St = #st{entry=CLabel,mlbl=#{},labels=Lbls},
 			  opt(Is, [], St)
 		  end, Is0).
 
@@ -327,7 +328,8 @@ opt([{label,Lbl}=I|Is], Acc, #st{mlbl=Mlbl}=St0) ->
 	    %% since we will rescan the inserted labels.  We MUST rescan.
 	    St = St0#st{mlbl=maps:remove(Lbl, Mlbl)},
 	    insert_labels([Lbl|Lbls], Is, Acc, St);
-	error -> opt(Is, [I|Acc], St0)
+	error ->
+	    opt(Is, [I|Acc], St0)
     end;
 opt([{jump,{f,_}=X}|[{label,_},{jump,X}|_]=Is], Acc, St) ->
     opt(Is, Acc, St);
@@ -362,28 +364,25 @@ opt([I|Is], Acc, #st{labels=Used0}=St0) ->
 	true  -> skip_unreachable(Is, [I|Acc], St);
 	false -> opt(Is, [I|Acc], St)
     end;
-opt([], Acc, #st{fc=Fc,mlbl=Mlbl}) ->
+opt([], Acc, #st{mlbl=Mlbl}) ->
     Code = reverse(Acc),
-    case maps:find(Fc, Mlbl) of
- 	{ok,Lbls} -> insert_fc_labels(Lbls, Mlbl, Code);
- 	error -> Code
-    end.
+    insert_fc_labels(Code, Mlbl).
+
+insert_fc_labels([{label,L}=I|Is0], Mlbl) ->
+    case maps:find(L, Mlbl) of
+	error ->
+	    [I|insert_fc_labels(Is0, Mlbl)];
+	{ok,Lbls} ->
+	    Is = [{label,Lb} || Lb <- Lbls] ++ Is0,
+	    [I|insert_fc_labels(Is, maps:remove(L, Mlbl))]
+    end;
+insert_fc_labels([_|_]=Is, _) -> Is.
 
 maps_append_list(K,Vs,M) ->
     case M of
         #{K:=Vs0} -> M#{K:=Vs0++Vs}; % same order as dict
         _ -> M#{K => Vs}
     end.
-
-insert_fc_labels([L|Ls], Mlbl, Acc0) ->
-    Acc = [{label,L}|Acc0],
-    case maps:find(L, Mlbl) of
-	error ->
-	    insert_fc_labels(Ls, Mlbl, Acc);
-	{ok,Lbls} ->
-	    insert_fc_labels(Lbls++Ls, Mlbl, Acc)
-    end;
-insert_fc_labels([], _, Acc) -> Acc.
 
 collect_labels(Is, #st{entry=Entry}) ->
     collect_labels_1(Is, Entry, []).
@@ -495,7 +494,7 @@ is_label_used_in_block({set,_,_,Info}, Lbl) ->
         {alloc,_,{gc_bif,_,{f,F}}} -> F =:= Lbl;
         {alloc,_,{put_map,_,{f,F}}} -> F =:= Lbl;
         {get_map_elements,{f,F}} -> F =:= Lbl;
-        {'catch',{f,F}} -> F =:= Lbl;
+        {try_catch,_,{f,F}} -> F =:= Lbl;
         {alloc,_,_} -> false;
         {put_tuple,_} -> false;
         {get_tuple_element,_} -> false;

@@ -1,7 +1,7 @@
 %% 
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2003-2009. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 	 bits_to_int/2,
 	 ensure_trailing_dir_delimiter/1,
 	 foreach/3,
-	 is_string/1,
+	 check_file/1,
 	 read_mib/1,
 	 read_noexit/2,
 	 strip_extension_from_filename/2,
@@ -86,20 +86,20 @@ to_upper([C|Cs]) -> [C|to_upper(Cs)];
 to_upper([]) -> [].
 
 
-is_string([]) -> true;
-is_string([Tkn | Str]) 
-  when is_integer(Tkn) andalso (Tkn >= 0) andalso (Tkn =< 255) ->
-    is_string(Str);
-is_string(_) -> false.
-
-
+check_file(FileName) ->
+    case filename:extension(FileName) of
+	".mib" ->
+	    filelib:is_regular(FileName);
+	_ ->
+	    filelib:is_regular(FileName ++ ".mib")
+    end.
+	
+    
 foreach(Function, ExtraArgs, [H | T]) ->
     apply(Function, [H | ExtraArgs]),
     foreach(Function, ExtraArgs, T);
 foreach(_Function, _ExtraArgs, []) -> 
     true.
-
-
 
 %%----------------------------------------------------------------------
 %% Returns: {ok, Mib}|{error, Reason}

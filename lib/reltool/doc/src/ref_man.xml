@@ -5,7 +5,7 @@
   <header>
     <copyright>
       <year>2009</year>
-      <year>2013</year>
+      <year>2016</year>
       <holder>Ericsson AB, All Rights Reserved</holder>
     </copyright>
     <legalnotice>
@@ -31,7 +31,7 @@
     <rev>%VSN%</rev>
   </header>
   <description>
-    <p><c>Reltool</c> is a release management tool. It analyses a given
+    <p>Reltool is a release management tool. It analyses a given
      Erlang/OTP installation and determines various dependencies
      between applications. The <c>graphical</c> frontend depicts the
      dependencies and enables interactive customization of a

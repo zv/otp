@@ -2,7 +2,7 @@
 %%%
 %%% %CopyrightBegin%
 %%% 
-%%% Copyright Ericsson AB 2003-2013. All Rights Reserved.
+%%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %%% 
 %%% Licensed under the Apache License, Version 2.0 (the "License");
 %%% you may not use this file except in compliance with the License.
@@ -95,7 +95,8 @@ peep([I=#move{src=#x86_temp{reg=Src}, dst=#x86_temp{reg=Dst}},
 
 %% ElimBinALMDouble
 %% ----------------
-peep([Move=#move{src=Src, dst=Dst}, Alu=#alu{src=Src, dst=Dst}|Insns], Res, Lst) ->
+peep([Move=#move{src=Src, dst=Dst}, Alu=#alu{src=Src, dst=Dst}|Insns], Res, Lst)
+  when not is_record(Dst, x86_mem) ->
   peep([Alu#alu{src=Dst}|Insns], [Move|Res], [elimBinALMDouble|Lst]);
 
 

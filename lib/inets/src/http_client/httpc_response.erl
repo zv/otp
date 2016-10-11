@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2004-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2004-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -110,27 +110,30 @@ result(Response = {{_, 300, _}, _, _},
     redirect(Response, Request);
 
 result(Response = {{_, Code, _}, _, _}, 
-       Request = #request{settings = 
-			  #http_options{autoredirect = true},
-			  method = head}) when (Code =:= 301) orelse
-					       (Code =:= 302) orelse
-					       (Code =:= 303) orelse
-					       (Code =:= 307) ->
+       Request = #request{settings =
+              #http_options{autoredirect = true},
+              method = post}) when (Code =:= 301) orelse
+                           (Code =:= 302) orelse
+                           (Code =:= 303) ->
+    redirect(Response, Request#request{method = get});
+result(Response = {{_, Code, _}, _, _}, 
+       Request = #request{settings =
+              #http_options{autoredirect = true},
+              method = post}) when (Code =:= 307) ->
     redirect(Response, Request);
 result(Response = {{_, Code, _}, _, _}, 
        Request = #request{settings = 
 			  #http_options{autoredirect = true},
-			  method = get}) when (Code =:= 301) orelse 
-					      (Code =:= 302) orelse 
-					      (Code =:= 303) orelse 
-					      (Code =:= 307) ->
-    redirect(Response, Request);
-result(Response = {{_, 303, _}, _, _},
-       Request = #request{settings =
-			  #http_options{autoredirect = true},
-			  method = post}) ->
-    redirect(Response, Request#request{method = get});
-
+			  method = Method}) when (Code =:= 301) orelse
+					       (Code =:= 302) orelse
+					       (Code =:= 303) orelse
+					       (Code =:= 307) ->
+    case lists:member(Method, [get, head, options, trace]) of
+    true ->
+        redirect(Response, Request);
+    false ->
+        transparent(Response, Request)
+    end;
 
 result(Response = {{_,503,_}, _, _}, Request) ->
     status_service_unavailable(Response, Request);

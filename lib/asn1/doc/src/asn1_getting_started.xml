@@ -4,7 +4,7 @@
 <chapter>
   <header>
     <copyright>
-      <year>1997</year><year>2013</year>
+      <year>1997</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -678,7 +678,7 @@ ok
  1081,32,1043,1085,1086,1084]</pre>
 
       <p>For details, see the <seealso marker="stdlib:unicode">unicode</seealso>
-      module in <c>stdlib</c>.</p>
+      module in STDLIB.</p>
 
       <p>In the following example, this ASN.1 specification is used:</p>
       <pre>

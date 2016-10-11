@@ -3,7 +3,7 @@
 #
 # %CopyrightBegin%
 # 
-# Copyright Ericsson AB 1996-2010. All Rights Reserved.
+# Copyright Ericsson AB 1996-2016. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ case :"$TARGET" in
 	    if [ -f $file ]; then
 		name=`echo $file | sed 's/\.[^.]*$//'`
 		sec=`echo $file | sed 's/.*\.//'`
-		/usr/bin/groff -Tascii -mandoc $ERL_ROOT/man/man$sec/$file \
+		/usr/bin/groff -Tutf8 -mandoc $ERL_ROOT/man/man$sec/$file \
 			> $ERL_ROOT/man/cat$sec/$file
 	    fi
 	done

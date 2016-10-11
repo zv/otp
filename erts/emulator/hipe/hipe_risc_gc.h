@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2008-2011. All Rights Reserved.
+ * Copyright Ericsson AB 2008-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,19 @@ static inline const struct sdesc*
 nstack_walk_init_sdesc(const Process *p, struct nstack_walk_state *state)
 {
     const struct sdesc *sdesc = hipe_find_sdesc((unsigned long)p->hipe.nra);
+    state->sdesc0 = sdesc;
+    return sdesc;
+}
+
+static inline const struct sdesc*
+nstack_walk_init_sdesc_ignore_trap(const Process *p,
+				   struct nstack_walk_state *state)
+{
+    unsigned long ra = (unsigned long)p->hipe.nra;
+    const struct sdesc *sdesc;
+    if (ra == (unsigned long)&nbif_stack_trap_ra)
+	ra = (unsigned long)p->hipe.ngra;
+    sdesc = hipe_find_sdesc(ra);
     state->sdesc0 = sdesc;
     return sdesc;
 }

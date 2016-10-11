@@ -5,7 +5,7 @@
   <header>
     <copyright>
       <year>2008</year>
-      <year>2013</year>
+      <year>2016</year>
       <holder>Ericsson AB, All Rights Reserved</holder>
     </copyright>
     <legalnotice>
@@ -34,6 +34,34 @@
     <rev>A</rev>
     <file>notes.xml</file>
   </header>
+
+<section><title>Public_Key 1.2</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    The ASN-1 type GeneralName can have more values, then the
+	    most common directory name, the code now handles this.</p>
+          <p>
+	    Own Id: OTP-13554</p>
+        </item>
+      </list>
+    </section>
+
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+          <p>
+	    Handle PEM encoded EC public keys</p>
+          <p>
+	    Own Id: OTP-13408</p>
+        </item>
+      </list>
+    </section>
+
+</section>
 
 <section><title>Public_Key 1.1.1</title>
 

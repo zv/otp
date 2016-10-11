@@ -2,7 +2,7 @@ changecom(`/*', `*/')dnl
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2004-2012. All Rights Reserved.
+ * Copyright Ericsson AB 2004-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -600,10 +600,11 @@ noproc_primop_interface_0(nbif_handle_fp_exception, erts_restore_fpu)
 define(gc_bif_interface_0,`nofail_primop_interface_0($1, $2)')
 
 /*
- * Implement gc_bif_interface_N as standard_bif_interface_N (N=1,2).
+ * Implement gc_bif_interface_N as standard_bif_interface_N (N=1,2,3).
  */
 define(gc_bif_interface_1,`standard_bif_interface_1($1, $2)')
 define(gc_bif_interface_2,`standard_bif_interface_2($1, $2)')
+define(gc_bif_interface_3,`standard_bif_interface_3($1, $2)')
 
 /*
  * Implement gc_nofail_primop_interface_1 as nofail_primop_interface_1.

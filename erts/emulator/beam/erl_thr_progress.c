@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2011-2013. All Rights Reserved.
+ * Copyright Ericsson AB 2011-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,9 +95,9 @@
 
 #define ERTS_THR_PRGR_FTL_ERR_BLCK_POLL_INTERVAL 100
 
-#define ERTS_THR_PRGR_LFLG_BLOCK	(((erts_aint32_t) 1) << 31)
-#define ERTS_THR_PRGR_LFLG_NO_LEADER	(((erts_aint32_t) 1) << 30)
-#define ERTS_THR_PRGR_LFLG_WAITING_UM	(((erts_aint32_t) 1) << 29)
+#define ERTS_THR_PRGR_LFLG_BLOCK	((erts_aint32_t) (1U << 31))
+#define ERTS_THR_PRGR_LFLG_NO_LEADER	((erts_aint32_t) (1U << 30))
+#define ERTS_THR_PRGR_LFLG_WAITING_UM	((erts_aint32_t) (1U << 29))
 #define ERTS_THR_PRGR_LFLG_ACTIVE_MASK	(~(ERTS_THR_PRGR_LFLG_NO_LEADER	\
 					   | ERTS_THR_PRGR_LFLG_BLOCK	\
 					   | ERTS_THR_PRGR_LFLG_WAITING_UM))
@@ -142,8 +142,8 @@ init_nob(ERTS_THR_PRGR_ATOMIC *atmc, ErtsThrPrgrVal val)
 #warning "Thread progress state debug is on"
 #endif
 
-#define ERTS_THR_PROGRESS_STATE_DEBUG_LEADER	(((erts_aint32_t) 1) << 0)
-#define ERTS_THR_PROGRESS_STATE_DEBUG_ACTIVE	(((erts_aint32_t) 1) << 1)
+#define ERTS_THR_PROGRESS_STATE_DEBUG_LEADER	((erts_aint32_t) (1U << 0))
+#define ERTS_THR_PROGRESS_STATE_DEBUG_ACTIVE	((erts_aint32_t) (1U << 1))
 
 #define ERTS_THR_PROGRESS_STATE_DEBUG_INIT(ID)						\
     erts_atomic32_init_nob(&intrnl->thr[(ID)].data.state_debug,				\
@@ -179,10 +179,10 @@ do {											\
 
 #endif /* ERTS_THR_PROGRESS_STATE_DEBUG */
 
-#define ERTS_THR_PRGR_BLCKR_INVALID (~((erts_aint32_t) 0))
-#define ERTS_THR_PRGR_BLCKR_UNMANAGED (((erts_aint32_t) 1) << 31)
+#define ERTS_THR_PRGR_BLCKR_INVALID        ((erts_aint32_t) (~0U))
+#define ERTS_THR_PRGR_BLCKR_UNMANAGED      ((erts_aint32_t) (1U << 31))
 
-#define ERTS_THR_PRGR_BC_FLG_NOT_BLOCKING (((erts_aint32_t) 1) << 31)
+#define ERTS_THR_PRGR_BC_FLG_NOT_BLOCKING  ((erts_aint32_t) (1U << 31))
 
 #define ERTS_THR_PRGR_BM_BITS 32
 #define ERTS_THR_PRGR_BM_SHIFT 5
@@ -700,6 +700,7 @@ leader_update(ErtsThrPrgrData *tpd)
 	    tpd->leader_state.chk_next_ix = no_managed;
 	    erts_atomic32_set_nob(&intrnl->misc.data.umrefc_ix.current,
 				  (erts_aint32_t) new_umrefc_ix);
+	    tpd->leader_state.umrefc_ix.current = new_umrefc_ix;
 	    ETHR_MEMBAR(ETHR_StoreLoad);
 	    refc = erts_atomic_read_nob(&intrnl->umrefc[umrefc_ix].refc);
 	    ASSERT(refc >= 0);
@@ -969,8 +970,10 @@ erts_thr_progress_unmanaged_continue__(ErtsThrPrgrDelayHandle handle)
 #ifdef ERTS_ENABLE_LOCK_CHECK
     ErtsThrPrgrData *tpd = perhaps_thr_prgr_data(NULL);
     ERTS_LC_ASSERT(tpd && tpd->is_delaying);
-    tpd->is_delaying = 0;
-    return_tmp_thr_prgr_data(tpd);
+    tpd->is_delaying--;
+    ASSERT(tpd->is_delaying >= 0);
+    if (!tpd->is_delaying)
+	return_tmp_thr_prgr_data(tpd);
 #endif
     ASSERT(!erts_thr_progress_is_managed_thread());
 
@@ -995,7 +998,7 @@ erts_thr_progress_unmanaged_delay__(void)
 #ifdef ERTS_ENABLE_LOCK_CHECK
     {
 	ErtsThrPrgrData *tpd = tmp_thr_prgr_data(NULL);
-	tpd->is_delaying = 1;
+	tpd->is_delaying++;
     }
 #endif
     return (ErtsThrPrgrDelayHandle) umrefc_ix;
@@ -1186,7 +1189,7 @@ wakeup_unmanaged_threads(ErtsThrPrgrUnmanagedWakeupData *umwd)
 	    int hbase = hix << ERTS_THR_PRGR_BM_SHIFT;
 	    int hbit;
 	    for (hbit = 0; hbit < ERTS_THR_PRGR_BM_BITS; hbit++) {
-		if (hmask & (1 << hbit)) {
+		if (hmask & (1U << hbit)) {
 		    erts_aint_t lmask;
 		    int lix = hbase + hbit;
 		    ASSERT(0 <= lix && lix < umwd->low_sz);
@@ -1195,7 +1198,7 @@ wakeup_unmanaged_threads(ErtsThrPrgrUnmanagedWakeupData *umwd)
 			int lbase = lix << ERTS_THR_PRGR_BM_SHIFT;
 			int lbit;
 			for (lbit = 0; lbit < ERTS_THR_PRGR_BM_BITS; lbit++) {
-			    if (lmask & (1 << lbit)) {
+			    if (lmask & (1U << lbit)) {
 				int id = lbase + lbit;
 				wakeup_unmanaged(id);
 			    }

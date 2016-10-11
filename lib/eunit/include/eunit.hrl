@@ -51,7 +51,9 @@
 %% note that the main switch used within this file is NOTEST; however,
 %% both TEST and EUNIT may be used to check whether testing is enabled
 -ifndef(NOTEST).
--undef(NOASSERT).    % testing requires that assertions are enabled
+-ifndef(ASSERT).
+-define(ASSERT, true).  % testing requires that assertions are enabled
+-endif.
 -ifndef(TEST).
 -define(TEST, true).
 -endif.
@@ -212,6 +214,7 @@
 -define(debugHere, ok).
 -define(debugFmt(S, As), ok).
 -define(debugVal(E), (E)).
+-define(debugValAll(E), (E)).
 -define(debugTime(S, E), (E)).
 -else.
 -define(debugMsg(S),
@@ -222,13 +225,18 @@
 	end).
 -define(debugHere, (?debugMsg("<-"))).
 -define(debugFmt(S, As), (?debugMsg(io_lib:format((S), (As))))).
--define(debugVal(E),
+-define(debugVal(E, D),
 	begin
 	((fun (__V) ->
-		  ?debugFmt(<<"~ts = ~tP">>, [(??E), __V, 15]),
+		  ?debugFmt(<<"~ts = ~tP">>,
+                            [(??E), __V, D]),
 		  __V
 	  end)(E))
 	end).
+-ifndef(EUNIT_DEBUG_VAL_DEPTH).
+-define(EUNIT_DEBUG_VAL_DEPTH, 15).
+-endif.
+-define(debugVal(E), ?debugVal(E, ?EUNIT_DEBUG_VAL_DEPTH)).
 -define(debugTime(S, E),
 	begin
 	((fun () ->

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2004-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2004-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@
         }).
 
 -record(state, {imp,
+		overridden,
                 maxargs,
                 records,
                 xwarnings = [],
@@ -67,8 +68,8 @@
 %%%
 
 -spec(parse_transform(Forms, Options) -> Forms2 when
-      Forms :: [erl_parse:abstract_form()],
-      Forms2 :: [erl_parse:abstract_form()],
+      Forms :: [erl_parse:abstract_form() | erl_parse:form_info()],
+      Forms2 :: [erl_parse:abstract_form() | erl_parse:form_info()],
       Options :: [Option],
       Option :: type_checker | compile:option()).
 
@@ -117,19 +118,21 @@ parse_transform(Forms0, Options) ->
         true = ets:delete(NodeInfo)
     end.
 
--spec(transform_from_evaluator(LC, Bs) -> Expr when
+-spec(transform_from_evaluator(LC, Bs) -> Return when
       LC :: erl_parse:abstract_expr(),
-      Expr :: erl_parse:abstract_expr(),
-      Bs :: erl_eval:binding_struct()).
+      Bs :: erl_eval:binding_struct(),
+      Return :: {ok, erl_parse:abstract_expr()}
+              | {not_ok, {error, module(), Reason :: term()}}).
 
 transform_from_evaluator(LC, Bindings) ->
     ?DEBUG("qlc Parse Transform (Evaluator Version)~n", []),
     transform_expression(LC, Bindings, false).
 
--spec(transform_expression(LC, Bs) -> Expr when
+-spec(transform_expression(LC, Bs) -> Return when
       LC :: erl_parse:abstract_expr(),
-      Expr :: erl_parse:abstract_expr(),
-      Bs :: erl_eval:binding_struct()).
+      Bs :: erl_eval:binding_struct(),
+      Return :: {ok, erl_parse:abstract_expr()}
+              | {not_ok, [{error, Reason :: term()}]}).
 
 transform_expression(LC, Bindings) ->
     transform_expression(LC, Bindings, true).
@@ -182,7 +185,9 @@ initiate(Forms0, Imported) ->
     exclude_integers_from_unique_line_numbers(Forms0, NodeInfo),
     ?DEBUG("node info0 ~p~n",
            [lists:sort(ets:tab2list(NodeInfo))]),
+    IsOverridden = set_up_overridden(Forms0),
     State0 = #state{imp = Imported,
+		    overridden = IsOverridden,
                     maxargs = ?EVAL_MAX_NUM_OF_ARGS,
                     records = record_attributes(Forms0),
                     node_info = NodeInfo},
@@ -200,7 +205,7 @@ exclude_integers_from_unique_line_numbers(Forms, NodeInfo) ->
 
 find_integers(Forms) ->
     F = fun(A) ->
-                Fs1 = erl_parse:map_anno(fun(_) -> A end, Forms),
+                Fs1 = map_anno(fun(_) -> A end, Forms),
                 ordsets:from_list(integers(Fs1, []))
         end,
     ordsets:to_list(ordsets:intersection(F(anno0()), F(anno1()))).
@@ -319,13 +324,13 @@ badarg(Forms, State) ->
     E0.
 
 lc_nodes(E, NodeInfo) ->
-    erl_parse:map_anno(fun(Anno) ->
-                               N = erl_anno:line(Anno),
-                               [{N, Data}] = ets:lookup(NodeInfo, N),
-                               NData = Data#{inside_lc => true},
-                               true = ets:insert(NodeInfo, {N, NData}),
-                               Anno
-                       end, E).
+    map_anno(fun(Anno) ->
+                     N = erl_anno:line(Anno),
+                     [{N, Data}] = ets:lookup(NodeInfo, N),
+                     NData = Data#{inside_lc => true},
+                     true = ets:insert(NodeInfo, {N, NData}),
+                     Anno
+             end, E).
 
 used_genvar_messages(MsL, S) ->
     [{File,[{Loc,?APIMOD,{used_generator_variable,V}}]}
@@ -416,7 +421,7 @@ intro_anno(LC, Where, QId, NodeInfo) ->
                   true = ets:insert(NodeInfo, {Location,Data}),
                   Anno
           end,
-    erl_parse:map_anno(Fun, save_anno(LC, NodeInfo)).
+    map_anno(Fun, save_anno(LC, NodeInfo)).
 
 compile_errors(FormsNoShadows) ->
     case compile_forms(FormsNoShadows, []) of
@@ -1517,36 +1522,35 @@ filter_info(FilterData, AllIVs, Dependencies, State) ->
 %% to be placed after further generators (the docs states otherwise, but 
 %% this seems to be common practice).
 filter_list(FilterData, Dependencies, State) ->
-    RDs = State#state.records,
-    sel_gf(FilterData, 1, Dependencies, RDs, [], []).
+    sel_gf(FilterData, 1, Dependencies, State, [], []).
 
 sel_gf([], _N, _Deps, _RDs, _Gens, _Gens1) ->
     [];
-sel_gf([{#qid{no = N}=Id,{fil,F}}=Fil | FData], N, Deps, RDs, Gens, Gens1) ->
-    case erl_lint:is_guard_test(F, RDs) of
+sel_gf([{#qid{no = N}=Id,{fil,F}}=Fil | FData], N, Deps, State, Gens, Gens1) ->
+    case is_guard_test(F, State) of
         true ->
             {Id,GIds} = lists:keyfind(Id, 1, Deps),
             case length(GIds) =< 1 of
                 true ->
                     case generators_in_scope(GIds, Gens1) of
                         true ->
-                            [Fil|sel_gf(FData, N+1, Deps, RDs, Gens, Gens1)];
+                            [Fil|sel_gf(FData, N+1, Deps, State, Gens, Gens1)];
                         false ->
-                            sel_gf(FData, N + 1, Deps, RDs, [], [])
+                            sel_gf(FData, N + 1, Deps, State, [], [])
                     end;
                 false ->
                     case generators_in_scope(GIds, Gens) of
                         true ->
-                            [Fil | sel_gf(FData, N + 1, Deps, RDs, Gens, [])];
+                            [Fil | sel_gf(FData, N + 1, Deps, State, Gens, [])];
                         false ->
-                            sel_gf(FData, N + 1, Deps, RDs, [], [])
+                            sel_gf(FData, N + 1, Deps, State, [], [])
                     end
             end;
         false ->
-            sel_gf(FData, N + 1, Deps, RDs, [], [])
+            sel_gf(FData, N + 1, Deps, State, [], [])
     end;
-sel_gf(FData, N, Deps, RDs, Gens, Gens1) ->
-    sel_gf(FData, N + 1, Deps, RDs, [N | Gens], [N | Gens1]).
+sel_gf(FData, N, Deps, State, Gens, Gens1) ->
+    sel_gf(FData, N + 1, Deps, State, [N | Gens], [N | Gens1]).
 
 generators_in_scope(GenIds, GenNumbers) ->
     lists:all(fun(#qid{no=N}) -> lists:member(N, GenNumbers) end, GenIds).
@@ -1650,7 +1654,7 @@ reset_anno(T) ->
     set_anno(T, anno0()).
 
 set_anno(T, A) ->
-    erl_parse:map_anno(fun(_L) -> A end, T).
+    map_anno(fun(_L) -> A end, T).
 
 -record(fstate, {state, bind_fun, imported}).
 
@@ -1868,7 +1872,8 @@ prep_expr(E, F, S, BF, Imported) ->
 
 unify_column(Frame, Var, Col, BindFun, Imported) ->
     A = anno0(),
-    Call = {call,A,{atom,A,element},[{integer,A,Col}, {var,A,Var}]},
+    Call = {call,A,{remote,A,{atom,A,erlang},{atom,A,element}},
+	    [{integer,A,Col}, {var,A,Var}]},
     element_calls(Call, Frame, BindFun, Imported).
 
 %% cons_tuple is used for representing {V1, ..., Vi | TupleTail}.
@@ -1878,6 +1883,8 @@ unify_column(Frame, Var, Col, BindFun, Imported) ->
 %% about the size of the tuple is known.
 element_calls({call,_,{remote,_,{atom,_,erlang},{atom,_,element}},
                [{integer,_,I},Term0]}, F0, BF, Imported) when I > 0 ->
+    %% Note: erl_expand_records ensures that all calls to element/2
+    %% have an explicit "erlang:" prefix.
     TupleTail = unique_var(),
     VarsL = [unique_var() || _ <- lists:seq(1, I)],
     Vars = VarsL ++ TupleTail,
@@ -1885,10 +1892,6 @@ element_calls({call,_,{remote,_,{atom,_,erlang},{atom,_,element}},
     VarI = lists:nth(I, VarsL),
     {Term, F} = element_calls(Term0, F0, BF, Imported),
     {VarI, unify('=:=', Tuple, Term, F, BF, Imported)};
-element_calls({call,L1,{atom,_,element}=E,As}, F0, BF, Imported) ->
-    %% erl_expand_records should add "erlang:"...
-    element_calls({call,L1,{remote,L1,{atom,L1,erlang},E}, As}, F0, BF,
-                  Imported);
 element_calls(T, F0, BF, Imported) when is_tuple(T) ->
     {L, F} = element_calls(tuple_to_list(T), F0, BF, Imported),
     {list_to_tuple(L), F};
@@ -1914,9 +1917,9 @@ expand_pattern_records(P, State) ->
 expand_expr_records(E, State) ->
     RecordDefs = State#state.records,
     A = anno1(),
-    Forms = RecordDefs ++ [{function,A,foo,0,[{clause,A,[],[],[pe(E)]}]}],
-    [{function,_,foo,0,[{clause,_,[],[],[NE]}]}] = 
-        erl_expand_records:module(Forms, [no_strict_record_tests]),
+    Forms0 = RecordDefs ++ [{function,A,foo,0,[{clause,A,[],[],[pe(E)]}]}],
+    Forms = erl_expand_records:module(Forms0, [no_strict_record_tests]),
+    {function,_,foo,0,[{clause,_,[],[],[NE]}]} = lists:last(Forms),
     NE.
 
 %% Partial evaluation.
@@ -2482,7 +2485,7 @@ filter(E, L, QIVs, S, RL, Fun, Go, GoI, IVs, State) ->
     %% This is the "guard semantics" used in ordinary list
     %% comprehension: if a filter looks like a guard test, it returns
     %% 'false' rather than fails.
-    Body = case erl_lint:is_guard_test(E, State#state.records) of
+    Body = case is_guard_test(E, State) of
                true -> 
                    CT = {clause,L,[],[[E]],[{call,L,?V(Fun),NAsT}]},
                    CF = {clause,L,[],[[?A(true)]],[{call,L,?V(Fun),NAsF}]},
@@ -2609,7 +2612,7 @@ save_anno(Abstr, NodeInfo) ->
                 true = ets:insert(NodeInfo, Data),
                 erl_anno:new(N)
         end,
-    erl_parse:map_anno(F, Abstr).
+    map_anno(F, Abstr).
 
 next_slot(T) ->
     I = ets:update_counter(T, var_n, 1),
@@ -2633,7 +2636,7 @@ restore_anno(Abstr, NodeInfo) ->
                         Anno
                 end
         end,
-    erl_parse:map_anno(F, Abstr).
+    map_anno(F, Abstr).
 
 restore_loc(Location, #state{node_info = NodeInfo}) ->
   case ets:lookup(NodeInfo, Location) of
@@ -2872,11 +2875,39 @@ var_mapfold(F, A0, [E0 | Es0]) ->
 var_mapfold(_F, A, E) ->
     {E, A}.
 
+map_anno(F, AbstrList) when is_list(AbstrList) ->
+    [map_anno1(F, Abstr) || Abstr <- AbstrList];
+map_anno(F, Abstr) ->
+    map_anno1(F, Abstr).
+
+map_anno1(F, Abstr) ->
+    erl_parse:map_anno(F, Abstr).
+
 family_list(L) ->
     sofs:to_external(family(L)).
 
 family(L) ->
     sofs:relation_to_family(sofs:relation(L)).
+
+is_guard_test(E, #state{records = RDs, overridden = IsOverridden}) ->
+    erl_lint:is_guard_test(E, RDs, IsOverridden).
+
+%% In code that has been run through erl_expand_records, a guard
+%% test will never contain calls without an explicit module
+%% prefix.  Unfortunately, this module runs *some* of the code
+%% through erl_expand_records, but not all of it.
+%%
+%% Therefore, we must set up our own list of local and imported functions
+%% that will override a BIF with the same name.
+
+set_up_overridden(Forms) ->
+    Locals = [{Name,Arity} || {function,_,Name,Arity,_} <- Forms],
+    Imports0 = [Fs || {attribute,_,import,Fs} <- Forms],
+    Imports1 = lists:flatten(Imports0),
+    Imports2 = [Fs || {_,Fs} <- Imports1],
+    Imports = lists:flatten(Imports2),
+    Overridden = gb_sets:from_list(Imports ++ Locals),
+    fun(FA) -> gb_sets:is_element(FA, Overridden) end.
 
 -ifdef(debug).
 display_forms(Forms) ->

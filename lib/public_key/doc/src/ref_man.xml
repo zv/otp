@@ -5,7 +5,7 @@
   <header>
     <copyright>
       <year>2008</year>
-      <year>2013</year>
+      <year>2016</year>
       <holder>Ericsson AB, All Rights Reserved</holder>
     </copyright>
     <legalnotice>
@@ -36,6 +36,7 @@
     from RFC 3280 (X.509 certificates) and parts of the PKCS standard.
     </p>
   </description>
+  <xi:include href="public_key_app.xml"/>
   <xi:include href="public_key.xml"/>
 </application>
 

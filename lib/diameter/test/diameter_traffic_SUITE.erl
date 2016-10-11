@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -248,17 +248,14 @@ all() ->
 groups() ->
     Ts = tc(),
     Sctp = ?util:have_sctp(),
-    [{?util:name([R,D,A,C]), [parallel], Ts} || R <- ?ENCODINGS,
-                                                D <- ?RFCS,
-                                                A <- ?ENCODINGS,
-                                                C <- ?CONTAINERS]
+    [{B, [P], Ts} || {B,P} <- [{true, shuffle}, {false, parallel}]]
         ++
         [{?util:name([T,R,D,A,C,SD,CD]),
           [],
           [start_services,
            add_transports,
            result_codes,
-           {group, ?util:name([R,D,A,C])},
+           {group, SD orelse CD},
            remove_transports,
            stop_services]}
          || T <- ?TRANSPORTS,
@@ -428,7 +425,11 @@ remove_transports(Config) ->
            server_service = SN}
         = group(Config),
     [LRef | Cs] = ?util:read_priv(Config, "transport"),
-    [?util:disconnect(CN, C, SN, LRef) || C <- Cs].
+    try
+        [] = [T || C <- Cs, T <- [?util:disconnect(CN, C, SN, LRef)], T /= ok]
+    after
+        ok = diameter:remove_transport(SN, LRef)
+    end.
 
 stop_services(Config) ->
     #group{client_service = CN,

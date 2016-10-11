@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2001-2012. All Rights Reserved.
+ * Copyright Ericsson AB 2001-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,5 +131,8 @@ static __inline__ void hipe_check_nstack(Process *p, unsigned nwords)
  */
 extern Eterm *fullsweep_nstack(Process *p, Eterm *n_htop);
 extern void gensweep_nstack(Process *p, Eterm **ptr_old_htop, Eterm **ptr_n_htop);
+extern Eterm *sweep_literals_nstack(Process *p, Eterm *n_htop, char *area,
+				    Uint area_size);
+extern int nstack_any_heap_ref_ptrs(Process *, char* mod_start, Uint mod_size);
 
 #endif /* HIPE_STACK_H */

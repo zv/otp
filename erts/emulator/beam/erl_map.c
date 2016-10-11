@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2014. All Rights Reserved.
+ * Copyright Ericsson AB 2014-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@
  * - maps:new/0
  * - maps:put/3
  * - maps:remove/2
+ * - maps:take/2
  * - maps:to_list/1
  * - maps:update/3
  * - maps:values/1
@@ -93,7 +94,7 @@ static Uint hashmap_subtree_size(Eterm node);
 static Eterm hashmap_to_list(Process *p, Eterm map);
 static Eterm hashmap_keys(Process *p, Eterm map);
 static Eterm hashmap_values(Process *p, Eterm map);
-static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key, Eterm node);
+static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key, Eterm node, Eterm *value);
 static Eterm flatmap_from_validated_list(Process *p, Eterm list, Uint size);
 static Eterm hashmap_from_validated_list(Process *p, Eterm list, Uint size);
 static Eterm hashmap_from_unsorted_array(ErtsHeapFactory*, hxnode_t *hxns, Uint n, int reject_dupkeys);
@@ -172,26 +173,22 @@ BIF_RETTYPE maps_to_list_1(BIF_ALIST_1) {
  */
 
 const Eterm *
-#if HALFWORD_HEAP
-erts_maps_get_rel(Eterm key, Eterm map, Eterm *map_base)
-#else
 erts_maps_get(Eterm key, Eterm map)
-#endif
 {
     Uint32 hx;
-    if (is_flatmap_rel(map, map_base)) {
+    if (is_flatmap(map)) {
 	Eterm *ks, *vs;
 	flatmap_t *mp;
 	Uint n, i;
 
-	mp  = (flatmap_t *)flatmap_val_rel(map, map_base);
+	mp  = (flatmap_t *)flatmap_val(map);
 	n   = flatmap_get_size(mp);
 
 	if (n == 0) {
 	    return NULL;
 	}
 
-	ks  = (Eterm *)tuple_val_rel(mp->keys, map_base) + 1;
+	ks  = (Eterm *)tuple_val(mp->keys) + 1;
 	vs  = flatmap_get_values(mp);
 
 	if (is_immed(key)) {
@@ -200,19 +197,19 @@ erts_maps_get(Eterm key, Eterm map)
 		    return &vs[i];
 		}
 	    }
-	}
-
-	for (i = 0; i < n; i++) {
-	    if (eq_rel(ks[i], map_base, key, NULL)) {
-		return &vs[i];
-	    }
-	}
+	} else {
+            for (i = 0; i < n; i++) {
+                if (EQ(ks[i], key)) {
+                    return &vs[i];
+                }
+            }
+        }
 	return NULL;
     }
-    ASSERT(is_hashmap_rel(map, map_base));
+    ASSERT(is_hashmap(map));
     hx = hashmap_make_hash(key);
 
-    return erts_hashmap_get_rel(hx, key, map, map_base);
+    return erts_hashmap_get(hx, key, map);
 }
 
 BIF_RETTYPE maps_find_2(BIF_ALIST_2) {
@@ -500,18 +497,50 @@ Eterm erts_hashmap_from_array(ErtsHeapFactory* factory, Eterm *leafs, Uint n,
     return res;
 }
 
+Eterm erts_map_from_ks_and_vs(ErtsHeapFactory *factory, Eterm *ks0, Eterm *vs0, Uint n)
+{
+    if (n < MAP_SMALL_MAP_LIMIT) {
+        Eterm *ks, *vs, *hp;
+	flatmap_t *mp;
+	Eterm keys;
 
-Eterm erts_hashmap_from_ks_and_vs_extra(Process *p, Eterm *ks, Eterm *vs, Uint n,
+        hp    = erts_produce_heap(factory, 3 + 1 + (2 * n), 0);
+	keys  = make_tuple(hp);
+	*hp++ = make_arityval(n);
+	ks    = hp;
+	hp   += n;
+	mp    = (flatmap_t*)hp;
+	hp   += MAP_HEADER_FLATMAP_SZ;
+	vs    = hp;
+
+        mp->thing_word = MAP_HEADER_FLATMAP;
+	mp->size = n;
+	mp->keys = keys;
+
+        sys_memcpy(ks, ks0, n * sizeof(Eterm));
+        sys_memcpy(vs, vs0, n * sizeof(Eterm));
+
+        erts_validate_and_sort_flatmap(mp);
+
+        return make_flatmap(mp);
+    } else {
+        return erts_hashmap_from_ks_and_vs(factory, ks0, vs0, n);
+    }
+    return THE_NON_VALUE;
+}
+
+
+Eterm erts_hashmap_from_ks_and_vs_extra(ErtsHeapFactory *factory,
+                                        Eterm *ks, Eterm *vs, Uint n,
 					Eterm key, Eterm value) {
     Uint32 sw, hx;
     Uint i,sz;
     hxnode_t *hxns;
-    ErtsHeapFactory factory;
     Eterm *hp, res;
 
     sz = (key == THE_NON_VALUE) ? n : (n + 1);
     ASSERT(sz > MAP_SMALL_MAP_LIMIT);
-    hp = HAlloc(p, 2 * sz);
+    hp = erts_produce_heap(factory, 2 * sz, 0);
 
     /* create tmp hx values and leaf ptrs */
     hxns = (hxnode_t *)erts_alloc(ERTS_ALC_T_TMP, sz * sizeof(hxnode_t));
@@ -534,12 +563,9 @@ Eterm erts_hashmap_from_ks_and_vs_extra(Process *p, Eterm *ks, Eterm *vs, Uint n
 	hxns[i].i    = i;
     }
 
-    erts_factory_proc_init(&factory, p);
-    res = hashmap_from_unsorted_array(&factory, hxns, sz, 0);
-    erts_factory_close(&factory);
+    res = hashmap_from_unsorted_array(factory, hxns, sz, 0);
 
     erts_free(ERTS_ALC_T_TMP, (void *) hxns);
-    ERTS_VERIFY_UNUSED_TEMP_ALLOC(p);
 
     return res;
 }
@@ -1525,10 +1551,45 @@ BIF_RETTYPE maps_put_3(BIF_ALIST_3) {
     BIF_ERROR(BIF_P, BADMAP);
 }
 
-/* maps:remove/3 */
+/* maps:take/2 */
 
-int erts_maps_remove(Process *p, Eterm key, Eterm map, Eterm *res) {
+BIF_RETTYPE maps_take_2(BIF_ALIST_2) {
+    if (is_map(BIF_ARG_2)) {
+        Eterm res, map, val;
+        if (erts_maps_take(BIF_P, BIF_ARG_1, BIF_ARG_2, &map, &val)) {
+            Eterm *hp = HAlloc(BIF_P, 3);
+            res   = make_tuple(hp);
+            *hp++ = make_arityval(2);
+            *hp++ = val;
+            *hp++ = map;
+            BIF_RET(res);
+        }
+        BIF_RET(am_error);
+    }
+    BIF_P->fvalue = BIF_ARG_2;
+    BIF_ERROR(BIF_P, BADMAP);
+}
+
+/* maps:remove/2 */
+
+BIF_RETTYPE maps_remove_2(BIF_ALIST_2) {
+    if (is_map(BIF_ARG_2)) {
+        Eterm res;
+        (void) erts_maps_take(BIF_P, BIF_ARG_1, BIF_ARG_2, &res, NULL);
+        BIF_RET(res);
+    }
+    BIF_P->fvalue = BIF_ARG_2;
+    BIF_ERROR(BIF_P, BADMAP);
+}
+
+/* erts_maps_take
+ * return 1 if key is found, otherwise 0
+ * If the key is not found res (output map) will be map (input map)
+ */
+int erts_maps_take(Process *p, Eterm key, Eterm map,
+                   Eterm *res, Eterm *value) {
     Uint32 hx;
+    Eterm ret;
     if (is_flatmap(map)) {
 	Sint n;
 	Uint need;
@@ -1541,7 +1602,7 @@ int erts_maps_remove(Process *p, Eterm key, Eterm map, Eterm *res) {
 
 	if (n == 0) {
 	    *res = map;
-	    return 1;
+	    return 0;
 	}
 
 	ks = flatmap_get_keys(mp);
@@ -1568,6 +1629,7 @@ int erts_maps_remove(Process *p, Eterm key, Eterm map, Eterm *res) {
 	if (is_immed(key)) {
 	    while (1) {
 		if (*ks == key) {
+                    if (value) *value = *vs;
 		    goto found_key;
 		} else if (--n) {
 		    *mhp++ = *vs++;
@@ -1578,6 +1640,7 @@ int erts_maps_remove(Process *p, Eterm key, Eterm map, Eterm *res) {
 	} else {
 	    while(1) {
 		if (EQ(*ks, key)) {
+                    if (value) *value = *vs;
 		    goto found_key;
 		} else if (--n) {
 		    *mhp++ = *vs++;
@@ -1593,7 +1656,7 @@ int erts_maps_remove(Process *p, Eterm key, Eterm map, Eterm *res) {
 	HRelease(p, hp_start + need, hp_start);
 
 	*res = map;
-	return 1;
+	return 0;
 
 found_key:
 	/* Copy rest of keys and values */
@@ -1605,19 +1668,13 @@ found_key:
     }
     ASSERT(is_hashmap(map));
     hx = hashmap_make_hash(key);
-    *res = hashmap_delete(p, hx, key, map);
-    return 1;
-}
-
-BIF_RETTYPE maps_remove_2(BIF_ALIST_2) {
-    if (is_map(BIF_ARG_2)) {
-	Eterm res;
-	if (erts_maps_remove(BIF_P, BIF_ARG_1, BIF_ARG_2, &res)) {
-	    BIF_RET(res);
-	}
+    ret = hashmap_delete(p, hx, key, map, value);
+    if (is_value(ret)) {
+        *res = ret;
+        return 1;
     }
-    BIF_P->fvalue = BIF_ARG_2;
-    BIF_ERROR(BIF_P, BADMAP);
+    *res = map;
+    return 0;
 }
 
 int erts_maps_update(Process *p, Eterm key, Eterm value, Eterm map, Eterm *res) {
@@ -1752,11 +1809,14 @@ Eterm erts_maps_put(Process *p, Eterm key, Eterm value, Eterm map) {
 	/* the map will grow */
 
 	if (n >= MAP_SMALL_MAP_LIMIT) {
+            ErtsHeapFactory factory;
 	    HRelease(p, shp + MAP_HEADER_FLATMAP_SZ + n, shp);
 	    ks = flatmap_get_keys(mp);
 	    vs = flatmap_get_values(mp);
 
-	    res = erts_hashmap_from_ks_and_vs_extra(p,ks,vs,n,key,value);
+            erts_factory_proc_init(&factory, p);
+	    res = erts_hashmap_from_ks_and_vs_extra(&factory,ks,vs,n,key,value);
+            erts_factory_close(&factory);
 
 	    return res;
 	}
@@ -1998,11 +2058,7 @@ Eterm* hashmap_iterator_prev(ErtsWStack* s) {
 }
 
 const Eterm *
-#if HALFWORD_HEAP
-erts_hashmap_get_rel(Uint32 hx, Eterm key, Eterm node, Eterm *map_base)
-#else
 erts_hashmap_get(Uint32 hx, Eterm key, Eterm node)
-#endif
 {
     Eterm *ptr, hdr, *res;
     Uint ix, lvl = 0;
@@ -2011,7 +2067,7 @@ erts_hashmap_get(Uint32 hx, Eterm key, Eterm node)
     UseTmpHeapNoproc(2);
 
     ASSERT(is_boxed(node));
-    ptr = boxed_val_rel(node, map_base);
+    ptr = boxed_val(node);
     hdr = *ptr;
     ASSERT(is_header(hdr));
     ASSERT(is_hashmap_header_head(hdr));
@@ -2032,15 +2088,15 @@ erts_hashmap_get(Uint32 hx, Eterm key, Eterm node)
         node  = ptr[ix+1];
 
         if (is_list(node)) { /* LEAF NODE [K|V] */
-            ptr = list_val_rel(node,map_base);
-            res = eq_rel(CAR(ptr), map_base, key, NULL) ? &(CDR(ptr)) : NULL;
+            ptr = list_val(node);
+            res = EQ(CAR(ptr), key) ? &(CDR(ptr)) : NULL;
             break;
         }
 
         hx = hashmap_shift_hash(th,hx,lvl,key);
 
         ASSERT(is_boxed(node));
-        ptr = boxed_val_rel(node, map_base);
+        ptr = boxed_val(node);
         hdr = *ptr;
         ASSERT(is_header(hdr));
         ASSERT(!is_hashmap_header_head(hdr));
@@ -2330,7 +2386,8 @@ static Eterm hashmap_values(Process* p, Eterm node) {
     return res;
 }
 
-static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key, Eterm map) {
+static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key,
+                            Eterm map, Eterm *value) {
     Eterm *hp = NULL, *nhp = NULL, *hp_end = NULL;
     Eterm *ptr;
     Eterm hdr, res = map, node = map;
@@ -2345,8 +2402,12 @@ static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key, Eterm map) {
 	switch(primary_tag(node)) {
 	    case TAG_PRIMARY_LIST:
 		if (EQ(CAR(list_val(node)), key)) {
+                    if (value) {
+                        *value = CDR(list_val(node));
+                    }
 		    goto unroll;
 		}
+                res = THE_NON_VALUE;
 		goto not_found;
 	    case TAG_PRIMARY_BOXED:
 		ptr = boxed_val(node);
@@ -2373,6 +2434,7 @@ static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key, Eterm map) {
                             n    = hashmap_bitcount(hval);
                         } else {
                             /* not occupied */
+                            res = THE_NON_VALUE;
                             goto not_found;
                         }
 
@@ -2402,6 +2464,7 @@ static Eterm hashmap_delete(Process *p, Uint32 hx, Eterm key, Eterm map) {
 			    break;
 			}
 			/* not occupied */
+                        res = THE_NON_VALUE;
 			goto not_found;
 		    default:
 			erts_exit(ERTS_ERROR_EXIT, "bad header tag %ld\r\n", hdr & _HEADER_MAP_SUBTAG_MASK);
@@ -2706,32 +2769,88 @@ BIF_RETTYPE erts_internal_map_to_tuple_keys_1(BIF_ALIST_1) {
 }
 
 /*
- * erts_internal:map_type/1
+ * erts_internal:term_type/1
  *
  * Used in erts_debug:size/1
  */
 
-BIF_RETTYPE erts_internal_map_type_1(BIF_ALIST_1) {
-    DECL_AM(hashmap);
-    DECL_AM(hashmap_node);
-    DECL_AM(flatmap);
-    if (is_map(BIF_ARG_1)) {
-        Eterm hdr = *(boxed_val(BIF_ARG_1));
-        ASSERT(is_header(hdr));
-        switch (hdr & _HEADER_MAP_SUBTAG_MASK) {
-            case HAMT_SUBTAG_HEAD_FLATMAP:
-                BIF_RET(AM_flatmap);
-            case HAMT_SUBTAG_HEAD_ARRAY:
-            case HAMT_SUBTAG_HEAD_BITMAP:
-                BIF_RET(AM_hashmap);
-            case HAMT_SUBTAG_NODE_BITMAP:
-                BIF_RET(AM_hashmap_node);
-            default:
-                erts_exit(ERTS_ERROR_EXIT, "bad header");
+BIF_RETTYPE erts_internal_term_type_1(BIF_ALIST_1) {
+    Eterm obj = BIF_ARG_1;
+    switch (primary_tag(obj)) {
+        case TAG_PRIMARY_LIST:
+            BIF_RET(ERTS_MAKE_AM("list"));
+        case TAG_PRIMARY_BOXED: {
+            Eterm hdr = *boxed_val(obj);
+            ASSERT(is_header(hdr));
+            switch (hdr & _TAG_HEADER_MASK) {
+                case ARITYVAL_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("tuple"));
+                case EXPORT_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("export"));
+                case FUN_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("fun"));
+                case MAP_SUBTAG:
+                    switch (MAP_HEADER_TYPE(hdr)) {
+                        case MAP_HEADER_TAG_FLATMAP_HEAD :
+                            BIF_RET(ERTS_MAKE_AM("flatmap"));
+                        case MAP_HEADER_TAG_HAMT_HEAD_BITMAP :
+                        case MAP_HEADER_TAG_HAMT_HEAD_ARRAY :
+                            BIF_RET(ERTS_MAKE_AM("hashmap"));
+                        case MAP_HEADER_TAG_HAMT_NODE_BITMAP :
+                            BIF_RET(ERTS_MAKE_AM("hashmap_node"));
+                        default:
+                            erts_exit(ERTS_ABORT_EXIT, "term_type: bad map header type %d\n", MAP_HEADER_TYPE(hdr));
+                    }
+                case REFC_BINARY_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("refc_binary"));
+                case HEAP_BINARY_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("heap_binary"));
+                case SUB_BINARY_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("sub_binary"));
+                case BIN_MATCHSTATE_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("matchstate"));
+                case POS_BIG_SUBTAG:
+                case NEG_BIG_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("bignum"));
+                case REF_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("reference"));
+                case EXTERNAL_REF_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("external_reference"));
+                case EXTERNAL_PID_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("external_pid"));
+                case EXTERNAL_PORT_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("external_port"));
+                case FLOAT_SUBTAG:
+                    BIF_RET(ERTS_MAKE_AM("hfloat"));
+                default:
+                    erts_exit(ERTS_ABORT_EXIT, "term_type: Invalid tag (0x%X)\n", hdr);
+            }
         }
+        case TAG_PRIMARY_IMMED1:
+            switch (obj & _TAG_IMMED1_MASK) {
+                case _TAG_IMMED1_SMALL:
+                    BIF_RET(ERTS_MAKE_AM("fixnum"));
+                case _TAG_IMMED1_PID:
+                    BIF_RET(ERTS_MAKE_AM("pid"));
+                case _TAG_IMMED1_PORT:
+                    BIF_RET(ERTS_MAKE_AM("port"));
+                case _TAG_IMMED1_IMMED2:
+                    switch (obj & _TAG_IMMED2_MASK) {
+                        case _TAG_IMMED2_ATOM:
+                            BIF_RET(ERTS_MAKE_AM("atom"));
+                        case _TAG_IMMED2_CATCH:
+                            BIF_RET(ERTS_MAKE_AM("catch"));
+                        case _TAG_IMMED2_NIL:
+                            BIF_RET(ERTS_MAKE_AM("nil"));
+                        default:
+                            erts_exit(ERTS_ABORT_EXIT, "term_type: Invalid tag (0x%X)\n", obj);
+                    }
+                default:
+                    erts_exit(ERTS_ABORT_EXIT, "term_type: Invalid tag (0x%X)\n", obj);
+            }
+        default:
+            erts_exit(ERTS_ABORT_EXIT, "term_type: Invalid tag (0x%X)\n", obj);
     }
-    BIF_P->fvalue = BIF_ARG_1;
-    BIF_ERROR(BIF_P, BADMAP);
 }
 
 /*

@@ -4,7 +4,7 @@
 <chapter>
   <header>
     <copyright>
-      <year>2004</year><year>2015</year>
+      <year>2004</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -29,6 +29,204 @@
     <rev>%VSN%</rev>
     <file>notes.xml</file>
   </header>
+
+<section><title>Ssh 4.3.3</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    Handle all possible exit values that should be
+	    interpreted as {error, closed}. Failing to do so could
+	    lead to unexpected crashes for users of the ssh
+	    application.</p>
+          <p>
+	    Own Id: OTP-13932 Aux Id: seq13189 </p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>Ssh 4.3.2</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    Upgrade of an established client connection could crash
+	    because the ssh client supervisors children had wrong
+	    type. This is fixed now.</p>
+          <p>
+	    Own Id: OTP-13782 Aux Id: seq13158 </p>
+        </item>
+        <item>
+          <p>
+	    Partly checks the public key early in public key
+	    authorization</p>
+          <p>
+	    Own Id: OTP-13847 Aux Id:
+	    defensics-ssh3.1.0-190243,205277,219318 </p>
+        </item>
+        <item>
+          <p>
+	    Corrected handling of SHA for ECDSA (Elliptic curve
+	    public keys)</p>
+          <p>
+	    Own Id: OTP-13850 Aux Id: defensics-ssh3.1.0-214168 </p>
+        </item>
+        <item>
+          <p>
+	    Problems found by test suites as well as by
+	    Codenomicon/Defensics fixed: - reduce max random padding
+	    to 15 bytes (Codenomicon/Defensics) - inclomplete pdu
+	    handling (Codenomicon/Defensics) - badmatch in test suite
+	    - non-blocking send fixes deadlock in
+	    ssh_connection_SUITE:interrupted_send</p>
+          <p>
+	    Own Id: OTP-13854</p>
+        </item>
+        <item>
+          <p>
+	    Caller is now notified when a tcp close is received.</p>
+          <p>
+	    Own Id: OTP-13859 Aux Id: seq13177 </p>
+        </item>
+      </list>
+    </section>
+
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+          <p>
+	    Use application:ensure_all_started/2 instead of
+	    hard-coding deps</p>
+          <p>
+	    Own Id: OTP-13843 Aux Id: PR-1147 </p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>Ssh 4.3.1</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    SSH client does not any longer retry a bad password given
+	    as option to ssh:connect et al.</p>
+          <p>
+	    Own Id: OTP-13674 Aux Id: TR-HU92273 </p>
+        </item>
+        <item>
+          <p>
+	    Removed possible hanging risk for a certain timing
+	    sequence when communicating client and server executes on
+	    the same node.</p>
+          <p>
+	    Own Id: OTP-13715</p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>Ssh 4.3</title>
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+          <p>
+	    A socket created and connected by gen_tcp could now be
+	    used as input to ssh:connect, ssh:shell,
+	    ssh_sftp:start_channel and ssh:daemon.</p>
+          <p>
+	    Own Id: OTP-12860</p>
+        </item>
+        <item>
+          <p>
+	    Some time optimization mainly in message encoding.</p>
+          <p>
+	    Own Id: OTP-13131</p>
+        </item>
+        <item>
+          <p>
+	    Optimized the sftp client time by setting new packet and
+	    window sizes.</p>
+          <p>
+	    Own Id: OTP-13175</p>
+        </item>
+        <item>
+          <p>
+	    The <c>ssh_connection_handler</c> module in SSH is
+	    changed and now uses the new behaviour <c>gen_statem</c>. </p>
+          <p>
+	    The module can be used as an example of a
+	    <c>gen_statem</c> callback module but with a warning:
+	    This commit of ssh is just a straightforward port from
+	    gen_fsm to gen_statem with some code cleaning. Since the
+	    state machine and the state callbacks are almost
+	    unchanged the ssh module does not demonstrate the full
+	    potential of the new behaviour.</p>
+          <p>
+	    The "new" state machine uses compound states. The ssh
+	    server and client state machines are quite similar but
+	    differences exist. With <c>gen_fsm</c> there were flags
+	    in the user data which in fact implemented "substates".
+	    Now with <c>gen_statem</c> those are made explicit in the
+	    state names, eg. the state <c>userauth</c> and the binary
+	    <c>role</c>-flag becomes the two state names
+	    <c>{userauth, server}</c> and <c>{userauth, client}</c>.</p>
+          <p>
+	    Own Id: OTP-13267</p>
+        </item>
+        <item>
+          <p>
+	    The <c>{error, Reason}</c> tuples returned from
+	    <c>ssh_sftp</c> api functions are described.</p>
+          <p>
+	    Own Id: OTP-13347 Aux Id: ERL-86 </p>
+        </item>
+        <item>
+          <p>
+	    Added -spec in ssh</p>
+          <p>
+	    Own Id: OTP-13479</p>
+        </item>
+        <item>
+          <p>
+	    It is now possible to call <c>ssh:daemon/{1,2,3}</c> with
+	    <c>Port=0</c>. This makes the daemon select a free
+	    listening tcp port before opening it. To find this port
+	    number after the call, use the new function
+	    <c>ssh:daemon_info/1</c>. See the reference manual for
+	    details.</p>
+          <p>
+	    Own Id: OTP-13527</p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>Ssh 4.2.2.1</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    SSH client does not any longer retry a bad password given
+	    as option to ssh:connect et al.</p>
+          <p>
+	    Own Id: OTP-13674 Aux Id: TR-HU92273 </p>
+        </item>
+      </list>
+    </section>
+
+</section>
 
 <section><title>Ssh 4.2.2</title>
 

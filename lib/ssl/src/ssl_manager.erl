@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -115,13 +115,25 @@ start_link_dist(Opts) ->
 %% Description: Do necessary initializations for a new connection.
 %%--------------------------------------------------------------------
 connection_init({der, _} = Trustedcerts, Role, CRLCache) ->
-    call({connection_init, Trustedcerts, Role, CRLCache});
+    case bypass_pem_cache() of
+	true ->
+	    {ok, Extracted} = ssl_pkix_db:extract_trusted_certs(Trustedcerts),
+	    call({connection_init, Extracted, Role, CRLCache});
+	false ->
+	    call({connection_init, Trustedcerts, Role, CRLCache})
+    end;
 
 connection_init(<<>> = Trustedcerts, Role, CRLCache) ->
     call({connection_init, Trustedcerts, Role, CRLCache});
 
 connection_init(Trustedcerts, Role, CRLCache) ->
-    call({connection_init, Trustedcerts, Role, CRLCache}).
+    case bypass_pem_cache() of
+	true ->
+	    {ok, Extracted} = ssl_pkix_db:extract_trusted_certs(Trustedcerts),
+	    call({connection_init, Extracted, Role, CRLCache});
+	false ->
+	    call({connection_init, Trustedcerts, Role, CRLCache})
+    end.
 
 %%--------------------------------------------------------------------
 -spec cache_pem_file(binary(), term()) -> {ok, term()} | {error, reason()}.
@@ -129,13 +141,18 @@ connection_init(Trustedcerts, Role, CRLCache) ->
 %% Description: Cache a pem file and return its content.
 %%--------------------------------------------------------------------
 cache_pem_file(File, DbHandle) ->
-    case ssl_pkix_db:lookup_cached_pem(DbHandle, File) of
-	[{Content,_}] ->
-	    {ok, Content};
-	[Content] ->
-	    {ok, Content};
-	undefined ->
-	    call({cache_pem, File})
+    case bypass_pem_cache() of
+	true ->
+	    ssl_pkix_db:decode_pem_file(File);
+	false ->
+	    case ssl_pkix_db:lookup_cached_pem(DbHandle, File) of
+		[{Content,_}] ->
+		    {ok, Content};
+		[Content] ->
+		    {ok, Content};
+		undefined ->
+		    call({cache_pem, File})
+	    end
     end.
 
 %%--------------------------------------------------------------------
@@ -506,6 +523,14 @@ delay_time() ->
 	   ?CLEAN_SESSION_DB
     end.
 
+bypass_pem_cache() ->
+    case application:get_env(ssl, bypass_pem_cache) of
+	{ok, Bool} when is_boolean(Bool) ->
+	    Bool;
+	_ ->
+	    false
+    end.
+
 max_session_cache_size(CacheType) ->
     case application:get_env(ssl, CacheType) of
 	{ok, Size} when is_integer(Size) ->
@@ -554,7 +579,7 @@ last_delay_timer({_,_}, TRef, {_, LastClient}) ->
 new_id(_, 0, _, _) ->
     <<>>;
 new_id(Port, Tries, Cache, CacheCb) ->
-    Id = crypto:rand_bytes(?NUM_OF_SESSION_ID_BYTES),
+    Id = ssl_cipher:random_bytes(?NUM_OF_SESSION_ID_BYTES),
     case CacheCb:lookup(Cache, {Port, Id}) of
 	undefined ->
 	    Now = erlang:monotonic_time(),
@@ -613,8 +638,8 @@ server_register_session(Port, Session, #state{session_cache_server_max = Max,
 
 do_register_session(Key, Session, Max, Pid, Cache, CacheCb) ->
     try CacheCb:size(Cache) of
-	N when N > Max  ->
-	  invalidate_session_cache(Pid, CacheCb, Cache);
+	Max ->
+	    invalidate_session_cache(Pid, CacheCb, Cache);
 	_ ->	
 	    CacheCb:update(Cache, Key, Session),
 	    Pid

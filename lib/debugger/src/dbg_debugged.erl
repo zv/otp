@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1998-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1998-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -70,7 +70,10 @@ msg_loop(Meta, Mref, SaveStacktrace) ->
 	%% Meta is evaluating a receive, must be done within context
 	%% of real (=this) process
 	{sys, Meta, {'receive',Msg}} ->
-	    receive Msg -> Meta ! {self(), rec_acked} end,
+	    receive Msg ->
+		Meta ! {self(), rec_acked},
+		ok
+	    end,
 	    msg_loop(Meta, Mref, SaveStacktrace);
 
 	%% Meta needs something evaluated within context of real process

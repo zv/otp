@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2011. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@
 -compile(export_all).
 
 -include_lib("common_test/include/ct.hrl").
--include("test_server_line.hrl").
 -include("odbc_test.hrl").
 
 %% Test server callback functions
@@ -50,6 +49,7 @@ init_per_suite(Config) ->
 		_ ->
 		    %% Make sure odbc is not already started
 		    odbc:stop(),
+		    ct:timetrap(?TIMEOUT),
 		    [{tableName, odbc_test_lib:unique_table_name()} | Config]
 	    end
     end.
@@ -75,11 +75,9 @@ end_per_suite(_Config) ->
 %% variable, but should NOT alter/remove any existing entries.
 %% Description: Initialization before each test case
 %%--------------------------------------------------------------------
-init_per_testcase(_TestCase, Config0) ->
-    test_server:format("ODBCINI = ~p~n", [os:getenv("ODBCINI")]),
-    Config = lists:keydelete(watchdog, 1, Config0),
-    Dog = test_server:timetrap(?TIMEOUT),
-    [{watchdog, Dog} | Config].
+init_per_testcase(_TestCase, Config) ->
+    ct:pal("ODBCINI = ~p~n", [os:getenv("ODBCINI")]),
+    Config.
 
 %%--------------------------------------------------------------------
 %% Function: end_per_testcase(TestCase, Config) -> _
@@ -89,15 +87,8 @@ init_per_testcase(_TestCase, Config0) ->
 %%   A list of key/value pairs, holding the test case configuration.
 %% Description: Cleanup after each test case
 %%--------------------------------------------------------------------
-end_per_testcase(_TestCase, Config) ->
-    Dog = ?config(watchdog, Config),
-    case Dog of 
-	undefined ->
-	    ok;
-	_ ->
-	    test_server:timetrap_cancel(Dog)
-    end.
-
+end_per_testcase(_TestCase, _Config) ->
+    ok.
 %%--------------------------------------------------------------------
 %% Function: all(Clause) -> TestCases
 %% Clause - atom() - suite | doc
@@ -136,10 +127,8 @@ app(Config) when is_list(Config) ->
 appup(Config) when is_list(Config) ->
     ok = ?t:appup_test(odbc).
 
-start(doc) -> 
-    ["Test start/stop of odbc"];
-start(suite) -> 
-    [];
+start() -> 
+    [{doc,"Test start/stop of odbc"}].
 start(Config) when is_list(Config) -> 
     PlatformOptions = odbc_test_lib:platform_options(),
 	{error,odbc_not_started} = odbc:connect(?RDBMS:connection_string(),
@@ -154,9 +143,9 @@ start(Config) when is_list(Config) ->
 	    start_odbc(transient),
 	    start_odbc(permanent);
 	{error, odbc_not_started} ->
-	    test_server:fail(start_failed);
+	    ct:fail(start_failed);
 	Error ->
-	    test_server:format("Connection failed: ~p~n", [Error]),
+	    ct:pal("Connection failed: ~p~n", [Error]),
 	    {skip, "ODBC is not properly setup"}
     end.
     
@@ -167,13 +156,12 @@ start_odbc(Type) ->
 	    ok = odbc:disconnect(Ref),
 	    odbc:stop();
 	{error, odbc_not_started} ->
-	    test_server:fail(start_failed)
+	    ct:fail(start_failed)
     end.
 
 
-long_connection_line(doc)->
-    ["Test a connection line longer than 127 characters"];
-long_connection_line(suite) -> [];
+long_connection_line()->
+    [{doc,"Test a connection line longer than 127 characters"}].
 long_connection_line(_Config)  ->
     odbc:start(),
     String133 = "unknown_odbc_parameter=01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",

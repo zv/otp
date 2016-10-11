@@ -1,7 +1,7 @@
 %% 
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2003-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -421,7 +421,7 @@
 -define(application, snmp).
 
 -include_lib("kernel/include/file.hrl").
--include_lib("test_server/include/test_server.hrl").
+-include_lib("common_test/include/ct.hrl").
 -include("snmp_test_lib.hrl").
 -define(SNMP_USE_V3, true).
 -include_lib("snmp/include/snmp_types.hrl").
@@ -647,22 +647,22 @@ init_per_group(GroupName, Config) ->
     snmp_test_lib:init_group_top_dir(GroupName, Config).
 
 init_per_group_ipv6(GroupName, Config, Init) ->
+    {ok, Hostname0} = inet:gethostname(),
     case ct:require(ipv6_hosts) of
 	ok ->
-	    case gen_udp:open(0, [inet6]) of
-		{ok, S} ->
-		    ok = gen_udp:close(S),
-		    Init(
-		      snmp_test_lib:init_group_top_dir(
-			GroupName,
-			[{ipfamily, inet6},
-			 {ip, ?LOCALHOST(inet6)}
-			 | lists:keydelete(ip, 1, Config)]));
-		{error, _} ->
-		    {skip, "Host seems to not support IPv6"}
-	    end;
+	  case lists:member(list_to_atom(Hostname0), ct:get_config(ipv6_hosts)) of
+	      true ->
+		  Init(
+		    snmp_test_lib:init_group_top_dir(
+		      GroupName,
+		      [{ipfamily, inet6},
+		       {ip, ?LOCALHOST(inet6)}
+		       | lists:keydelete(ip, 1, Config)]));
+	      false ->
+		  {skip, "Host does not support IPV6"}
+	  end;
 	_ ->
-	    {skip, "Host does not support IPV6"}
+	    {skip, "Test config ipv6_hosts is missing"}
     end.
 
 end_per_group(all_tcs, Config) ->

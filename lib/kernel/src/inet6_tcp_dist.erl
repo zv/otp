@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1997-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 -export([listen/1, accept/1, accept_connection/5,
          setup/5, close/1, select/1, is_node_name/1]).
 
+-export([setopts/2, getopts/2]).
 
 %% ------------------------------------------------------------
 %%  Select this protocol based on node name
@@ -72,3 +73,9 @@ close(Socket) ->
     
 is_node_name(Node) when is_atom(Node) ->
     inet_tcp_dist:is_node_name(Node).
+
+setopts(S, Opts) ->
+    inet_tcp_dist:setopts(S, Opts).
+
+getopts(S, Opts) ->
+    inet_tcp_dist:getopts(S, Opts).

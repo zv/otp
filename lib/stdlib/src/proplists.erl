@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2001-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -438,8 +438,9 @@ substitute_aliases_1([], P) ->
 %% @see normalize/2
 
 -spec substitute_negations(Negations, ListIn) -> ListOut when
-      Negations :: [{Key, Key}],
-      Key :: term(),
+      Negations :: [{Key1, Key2}],
+      Key1 :: term(),
+      Key2 :: term(),
       ListIn :: [term()],
       ListOut :: [term()].
 

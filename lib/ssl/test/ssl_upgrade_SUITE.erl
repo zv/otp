@@ -29,7 +29,8 @@
 	  server,
 	  client,
 	  soft,
-	  result_proxy
+	  result_proxy,
+	  skip
 	 }).
 
 all() -> 
@@ -40,20 +41,19 @@ all() ->
 
 init_per_suite(Config0) ->
     catch crypto:stop(),
-    try {crypto:start(), erlang:system_info({wordsize, internal}) == erlang:system_info({wordsize, external})} of
-	{ok, true} ->
-	    case ct_release_test:init(Config0) of
-		{skip, Reason} ->
-		    {skip, Reason};
-		Config ->
-		    {ok, _} = make_certs:all(?config(data_dir, Config),
-					      ?config(priv_dir, Config)),
-		    ssl_test_lib:cert_options(Config)
-	    end;
-	{ok, false} ->
-	    {skip, "Test server will not handle halfwordemulator correctly. Skip as halfwordemulator is deprecated"} 
+    try crypto:start() of
+        ok ->
+            case ct_release_test:init(Config0) of
+                {skip, Reason} ->
+                    {skip, Reason};
+                Config ->
+                    Result =
+                    {ok, _} = make_certs:all(proplists:get_value(data_dir, Config),
+                                             proplists:get_value(priv_dir, Config)),
+                    ssl_test_lib:cert_options(Config)
+            end
     catch _:_ ->
-	    {skip, "Crypto did not start"}
+              {skip, "Crypto did not start"}
     end.
 
 end_per_suite(Config) ->
@@ -61,7 +61,7 @@ end_per_suite(Config) ->
     crypto:stop().
 
 init_per_testcase(_TestCase, Config) ->
-    ct:log("TLS/SSL version ~p~n ", [tls_record:supported_protocol_versions()]),
+    ssl_test_lib:ct_log_supported_protocol_versions(Config),
     ct:timetrap({minutes, 1}),
     Config.
 
@@ -74,8 +74,15 @@ major_upgrade(Config) when is_list(Config) ->
 minor_upgrade(Config) when is_list(Config) ->
     ct_release_test:upgrade(ssl, minor,{?MODULE, #state{config = Config}}, Config).
 
-upgrade_init(CTData, #state{config = Config} = State) -> 
-    {ok, {_, _, Up, _Down}} = ct_release_test:get_appup(CTData, ssl),
+upgrade_init(CtData, State) -> 
+    {ok,{FromVsn,ToVsn}} = ct_release_test:get_app_vsns(CtData, ssl),
+    upgrade_init(FromVsn, ToVsn, CtData, State).
+
+upgrade_init(_, "8.0.2", _, State) ->
+    %% Requires stdlib upgrade so it will be a node upgrade!
+    State#state{skip = true};
+upgrade_init(_, _, CtData, #state{config = Config} = State) ->
+    {ok, {_, _, Up, _Down}} = ct_release_test:get_appup(CtData, ssl),
     ct:pal("Up: ~p", [Up]),
     Soft = is_soft(Up), %% It is symmetrical, if upgrade is soft so is downgrade  
     Pid = spawn(?MODULE, result_proxy_init, [[]]),
@@ -89,6 +96,8 @@ upgrade_init(CTData, #state{config = Config} = State) ->
 	    State#state{soft = Soft, result_proxy = Pid}
     end.
 
+upgrade_upgraded(_, #state{skip = true} = State) ->
+    State;
 upgrade_upgraded(_, #state{soft = false, config = Config, result_proxy = Pid} = State) ->
     ct:pal("Restart upgrade ~n", []),
     {Server, Client} = restart_start_connection(Config, Pid),
@@ -97,7 +106,6 @@ upgrade_upgraded(_, #state{soft = false, config = Config, result_proxy = Pid} = 
     ssl_test_lib:close(Client),
     ok = Result,
     State;
-
 upgrade_upgraded(_, #state{server = Server0, client = Client0,
 			   config = Config, soft = true,
 			   result_proxy = Pid} = State) ->
@@ -111,6 +119,8 @@ upgrade_upgraded(_, #state{server = Server0, client = Client0,
     {Server, Client} = soft_start_connection(Config, Pid),
     State#state{server = Server, client = Client}.
 
+upgrade_downgraded(_, #state{skip = true} = State) ->
+    State;
 upgrade_downgraded(_, #state{soft = false, config = Config, result_proxy = Pid} = State) ->
     ct:pal("Restart downgrade: ~n", []),
     {Server, Client} = restart_start_connection(Config, Pid),
@@ -120,7 +130,6 @@ upgrade_downgraded(_, #state{soft = false, config = Config, result_proxy = Pid} 
     Pid ! stop,
     ok = Result,
     State;
-
 upgrade_downgraded(_, #state{server = Server, client = Client, soft = true, result_proxy = Pid} = State) ->
     ct:pal("Soft downgrade: ~n", []),
     Server ! changed_version,
@@ -140,8 +149,8 @@ use_connection(Socket) ->
     end.
 
 soft_start_connection(Config, ResulProxy) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
+    ClientOpts = proplists:get_value(client_verification_opts, Config),
+    ServerOpts = proplists:get_value(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = start_server([{node, ServerNode}, {port, 0},
 			   {from, ResulProxy},
@@ -157,8 +166,8 @@ soft_start_connection(Config, ResulProxy) ->
     {Server, Client}.
 
 restart_start_connection(Config, ResulProxy) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
+    ClientOpts = proplists:get_value(client_verification_opts, Config),
+    ServerOpts = proplists:get_value(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = start_server([{node, ServerNode}, {port, 0},
 					{from, ResulProxy},

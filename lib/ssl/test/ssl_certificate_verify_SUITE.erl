@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2012-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2012-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -52,8 +52,8 @@ groups() ->
      {error_handling, [],error_handling_tests()}].
 
 tests() ->
-    [server_verify_peer,
-     server_verify_none,
+    [verify_peer,
+     verify_none,
      server_require_peer_cert_ok,
      server_require_peer_cert_fail,
      server_require_peer_cert_partial_chain,
@@ -65,9 +65,10 @@ tests() ->
      cert_expired,
      invalid_signature_client,
      invalid_signature_server,
-     extended_key_usage_verify_peer,
-     extended_key_usage_verify_none,
-     critical_extension_verify_peer,
+     extended_key_usage_verify_client,
+     extended_key_usage_verify_server,
+     critical_extension_verify_client,
+     critical_extension_verify_server,
      critical_extension_verify_none].
 
 error_handling_tests()->
@@ -84,10 +85,10 @@ init_per_suite(Config0) ->
     catch crypto:stop(),
     try crypto:start() of
 	ok ->
-	    ssl:start(),
+	    ssl_test_lib:clean_start(),
 	    %% make rsa certs using oppenssl
-	    {ok, _} = make_certs:all(?config(data_dir, Config0),
-				     ?config(priv_dir, Config0)),
+	    {ok, _} = make_certs:all(proplists:get_value(data_dir, Config0),
+				     proplists:get_value(priv_dir, Config0)),
 	    Config = ssl_test_lib:make_dsa_cert(Config0),
 	    ssl_test_lib:cert_options(Config)
     catch _:_ ->
@@ -110,8 +111,21 @@ init_per_group(_, Config) ->
 end_per_group(_GroupName, Config) ->
     Config.
 
+init_per_testcase(TestCase, Config) when TestCase == cert_expired;
+					 TestCase == invalid_signature_client;
+					 TestCase == invalid_signature_server;
+					 TestCase == extended_key_usage_verify_none;
+					 TestCase == extended_key_usage_verify_peer;
+					 TestCase == critical_extension_verify_none;
+					 TestCase == critical_extension_verify_peer;
+					 TestCase == no_authority_key_identifier;
+					 TestCase == no_authority_key_identifier_and_nonstandard_encoding->
+    ssl:clear_pem_cache(),
+    init_per_testcase(common, Config);
 init_per_testcase(_TestCase, Config) ->
-    ct:log("TLS/SSL version ~p~n ", [tls_record:supported_protocol_versions()]),
+    ssl:stop(),
+    ssl:start(),
+    ssl_test_lib:ct_log_supported_protocol_versions(Config),
     ct:timetrap({seconds, 5}),
     Config.
 
@@ -122,13 +136,13 @@ end_per_testcase(_TestCase, Config) ->
 %% Test Cases --------------------------------------------------------
 %%--------------------------------------------------------------------
 
-server_verify_peer() ->
-    [{doc,"Test server option verify_peer"}].
-server_verify_peer(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+verify_peer() ->
+    [{doc,"Test option verify_peer"}].
+verify_peer(Config) when is_list(Config) ->
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},
@@ -147,14 +161,14 @@ server_verify_peer(Config) when is_list(Config) ->
     ssl_test_lib:close(Client).
 
 %%--------------------------------------------------------------------
-server_verify_none() ->
-    [{doc,"Test server option verify_none"}].
+verify_none() ->
+    [{doc,"Test option verify_none"}].
 
-server_verify_none(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_verification_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+verify_none(Config) when is_list(Config) ->
+    ClientOpts =  ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
@@ -179,10 +193,10 @@ server_verify_client_once() ->
     [{doc,"Test server option verify_client_once"}].
 
 server_verify_client_once(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, []),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
@@ -218,20 +232,23 @@ server_require_peer_cert_ok() ->
 
 server_require_peer_cert_ok(Config) when is_list(Config) ->
     ServerOpts = [{verify, verify_peer}, {fail_if_no_peer_cert, true}
-		  | ?config(server_verification_opts, Config)],
-    ClientOpts = ?config(client_verification_opts, Config),
+		  | ssl_test_lib:ssl_options(server_verification_opts, Config)],
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
+
 
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},
-			   {mfa, {ssl_test_lib,send_recv_result, []}},
-			   {options, [{active, false} | ServerOpts]}]),
+			   {mfa, {ssl_test_lib, ReceiveFunction, []}},
+			   {options, [{active, Active} | ServerOpts]}]),
     Port = ssl_test_lib:inet_port(Server),
     Client = ssl_test_lib:start_client([{node, ClientNode}, {port, Port},
 					{host, Hostname},
 			   {from, self()},
-			   {mfa, {ssl_test_lib, send_recv_result, []}},
-			   {options, [{active, false} | ClientOpts]}]),
+			   {mfa, {ssl_test_lib, ReceiveFunction, []}},
+			   {options, [{active, Active} | ClientOpts]}]),
 
     ssl_test_lib:check_result(Server, ok, Client, ok),
     ssl_test_lib:close(Server),
@@ -244,8 +261,8 @@ server_require_peer_cert_fail() ->
 
 server_require_peer_cert_fail(Config) when is_list(Config) ->
     ServerOpts = [{verify, verify_peer}, {fail_if_no_peer_cert, true}
-		  | ?config(server_verification_opts, Config)],
-    BadClientOpts = ?config(client_opts, Config),
+		  | ssl_test_lib:ssl_options(server_verification_opts, Config)],
+    BadClientOpts = ssl_test_lib:ssl_options(client_opts, []),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
 
     Server = ssl_test_lib:start_server_error([{node, ServerNode}, {port, 0},
@@ -275,8 +292,8 @@ server_require_peer_cert_partial_chain() ->
 
 server_require_peer_cert_partial_chain(Config) when is_list(Config) ->
     ServerOpts = [{verify, verify_peer}, {fail_if_no_peer_cert, true}
-		  | ?config(server_verification_opts, Config)],
-    ClientOpts = ?config(client_verification_opts, Config),
+		  | ssl_test_lib:ssl_options(server_verification_opts, Config)],
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
 
     {ok, ClientCAs} = file:read_file(proplists:get_value(cacertfile, ClientOpts)),
@@ -310,12 +327,14 @@ server_require_peer_cert_allow_partial_chain() ->
 
 server_require_peer_cert_allow_partial_chain(Config) when is_list(Config) ->
     ServerOpts = [{verify, verify_peer}, {fail_if_no_peer_cert, true}
-		  | ?config(server_verification_opts, Config)],
-    ClientOpts = ?config(client_verification_opts, Config),
+		  | ssl_test_lib:ssl_options(server_verification_opts, Config)],
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
-    {ok, ServerCAs} = file:read_file(proplists:get_value(cacertfile, ServerOpts)),
-    [{_,_,_}, {_, IntermidiateCA, _}] = public_key:pem_decode(ServerCAs),
+    {ok, ClientCAs} = file:read_file(proplists:get_value(cacertfile, ClientOpts)),
+    [{_,_,_}, {_, IntermidiateCA, _}] = public_key:pem_decode(ClientCAs),
 
     PartialChain =  fun(CertChain) ->
 			    case lists:member(IntermidiateCA, CertChain) of
@@ -328,16 +347,17 @@ server_require_peer_cert_allow_partial_chain(Config) when is_list(Config) ->
 
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},
-					{mfa, {ssl_test_lib, send_recv_result_active, []}},
-					{options, [{cacerts, [IntermidiateCA]},
+					{mfa, {ssl_test_lib, ReceiveFunction, []}},
+					{options, [{active, Active},
+						   {cacerts, [IntermidiateCA]},
 						   {partial_chain, PartialChain} |
 						   proplists:delete(cacertfile, ServerOpts)]}]),
     Port = ssl_test_lib:inet_port(Server),
     Client = ssl_test_lib:start_client([{node, ClientNode}, {port, Port},
 					{host, Hostname},
 					{from, self()},
-					{mfa, {ssl_test_lib, send_recv_result_active, []}},
-					{options, ClientOpts}]),
+					{mfa, {ssl_test_lib, ReceiveFunction, []}},
+					{options, [{active, Active} | ClientOpts]}]),
     ssl_test_lib:check_result(Server, ok, Client, ok),
     ssl_test_lib:close(Server),
     ssl_test_lib:close(Client).
@@ -349,8 +369,8 @@ server_require_peer_cert_do_not_allow_partial_chain() ->
 
 server_require_peer_cert_do_not_allow_partial_chain(Config) when is_list(Config) ->
     ServerOpts = [{verify, verify_peer}, {fail_if_no_peer_cert, true}
-		  | ?config(server_verification_opts, Config)],
-    ClientOpts = ?config(client_verification_opts, Config),
+		  | ssl_test_lib:ssl_options(server_verification_opts, Config)],
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
 
     {ok, ServerCAs} = file:read_file(proplists:get_value(cacertfile, ServerOpts)),
@@ -390,8 +410,8 @@ server_require_peer_cert_partial_chain_fun_fail() ->
 
 server_require_peer_cert_partial_chain_fun_fail(Config) when is_list(Config) ->
     ServerOpts = [{verify, verify_peer}, {fail_if_no_peer_cert, true}
-		  | ?config(server_verification_opts, Config)],
-    ClientOpts = ?config(client_verification_opts, Config),
+		  | ssl_test_lib:ssl_options(server_verification_opts, Config)],
+    ClientOpts = proplists:get_value(client_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
 
     {ok, ServerCAs} = file:read_file(proplists:get_value(cacertfile, ServerOpts)),
@@ -430,8 +450,8 @@ verify_fun_always_run_client() ->
     [{doc,"Verify that user verify_fun is always run (for valid and valid_peer not only unknown_extension)"}].
 
 verify_fun_always_run_client(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_verification_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts =  ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts =  ssl_test_lib:ssl_options(server_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server_error([{node, ServerNode}, {port, 0},
 					      {from, self()},
@@ -475,8 +495,8 @@ verify_fun_always_run_client(Config) when is_list(Config) ->
 verify_fun_always_run_server() ->
     [{doc,"Verify that user verify_fun is always run (for valid and valid_peer not only unknown_extension)"}].
 verify_fun_always_run_server(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_verification_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts =  ssl_test_lib:ssl_options(client_opts, Config),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
 
     %% If user verify fun is called correctly we fail the connection.
@@ -507,9 +527,7 @@ verify_fun_always_run_server(Config) when is_list(Config) ->
 					      {from, self()},
 					      {mfa, {ssl_test_lib,
 						     no_result, []}},
-					      {options,
-					       [{verify, verify_peer}
-						| ClientOpts]}]),
+					      {options, ClientOpts}]),
 
     %% Client error may be {tls_alert, "handshake failure" } or closed depending on timing
     %% this is not a bug it is a circumstance of how tcp works!
@@ -522,39 +540,13 @@ verify_fun_always_run_server(Config) when is_list(Config) ->
 
 %%--------------------------------------------------------------------
 
-client_verify_none_passive() ->
-    [{doc,"Test client option verify_none"}].
-
-client_verify_none_passive(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_opts, Config),
-    {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
-    Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
-					{from, self()},
-					{mfa, {ssl_test_lib, send_recv_result, []}},
-					{options, [{active, false}
-						   | ServerOpts]}]),
-    Port  = ssl_test_lib:inet_port(Server),
-
-    Client = ssl_test_lib:start_client([{node, ClientNode}, {port, Port},
-					{host, Hostname},
-					{from, self()},
-					{mfa, {ssl_test_lib, send_recv_result, []}},
-					{options, [{active, false},
-						   {verify, verify_none}
-						   | ClientOpts]}]),
-
-    ssl_test_lib:check_result(Server, ok, Client, ok),
-    ssl_test_lib:close(Server),
-    ssl_test_lib:close(Client).
-%%--------------------------------------------------------------------
 cert_expired() ->
     [{doc,"Test server with expired certificate"}].
 
 cert_expired(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -616,73 +608,15 @@ two_digits_str(N) ->
     lists:flatten(io_lib:format("~p", [N])).
 
 %%--------------------------------------------------------------------
+extended_key_usage_verify_server() ->
+    [{doc,"Test cert that has a critical extended_key_usage extension in verify_peer mode for server"}].
 
-client_verify_none_active() ->
-    [{doc,"Test client option verify_none"}].
-
-client_verify_none_active(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_opts, Config),
-    {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
-    Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
-					{from, self()},
-					{mfa, {ssl_test_lib,
-					       send_recv_result_active, []}},
-					{options, [{active, true}
-						   | ServerOpts]}]),
-    Port  = ssl_test_lib:inet_port(Server),
-    Client = ssl_test_lib:start_client([{node, ClientNode}, {port, Port},
-					{host, Hostname},
-					{from, self()},
-					{mfa, {ssl_test_lib,
-					       send_recv_result_active, []}},
-					{options, [{active, true},
-						   {verify, verify_none}
-						   | ClientOpts]}]),
-
-    ssl_test_lib:check_result(Server, ok, Client, ok),
-    ssl_test_lib:close(Server),
-    ssl_test_lib:close(Client).
-
-%%--------------------------------------------------------------------
-client_verify_none_active_once() ->
-    [{doc,"Test client option verify_none"}].
-
-client_verify_none_active_once(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_opts, Config),
-
-    {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
-    Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
-					{from, self()},
-			   {mfa, {ssl_test_lib, send_recv_result_active, []}},
-			   {options, [{active, once} | ServerOpts]}]),
-    Port  = ssl_test_lib:inet_port(Server),
-
-    Client = ssl_test_lib:start_client([{node, ClientNode}, {port, Port},
-					{host, Hostname},
-					{from, self()},
-					{mfa, {ssl_test_lib,
-					       send_recv_result_active_once,
-					       []}},
-					{options, [{active, once},
-						   {verify, verify_none}
-						   | ClientOpts]}]),
-
-    ssl_test_lib:check_result(Server, ok, Client, ok),
-    ssl_test_lib:close(Server),
-    ssl_test_lib:close(Client).
-
-%%--------------------------------------------------------------------
-extended_key_usage_verify_peer() ->
-    [{doc,"Test cert that has a critical extended_key_usage extension in verify_peer mode"}].
-
-extended_key_usage_verify_peer(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+extended_key_usage_verify_server(Config) when is_list(Config) ->
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -727,7 +661,7 @@ extended_key_usage_verify_peer(Config) when is_list(Config) ->
 					{host, Hostname},
 			   {from, self()},
 			   {mfa, {ssl_test_lib, ReceiveFunction, []}},
-					{options, [{verify, verify_peer}, {active, Active} |
+					{options, [{verify, verify_none}, {active, Active} |
 						   NewClientOpts]}]),
 
     ssl_test_lib:check_result(Server, ok, Client, ok),
@@ -736,15 +670,15 @@ extended_key_usage_verify_peer(Config) when is_list(Config) ->
     ssl_test_lib:close(Client).
 
 %%--------------------------------------------------------------------
-extended_key_usage_verify_none() ->
-    [{doc,"Test cert that has a critical extended_key_usage extension in verify_none mode"}].
+extended_key_usage_verify_client() ->
+    [{doc,"Test cert that has a critical extended_key_usage extension in client verify_peer mode"}].
 
-extended_key_usage_verify_none(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+extended_key_usage_verify_client(Config) when is_list(Config) ->
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -797,15 +731,15 @@ extended_key_usage_verify_none(Config) when is_list(Config) ->
     ssl_test_lib:close(Client).
 
 %%--------------------------------------------------------------------
-critical_extension_verify_peer() ->
+critical_extension_verify_server() ->
     [{doc,"Test cert that has a critical unknown extension in verify_peer mode"}].
 
-critical_extension_verify_peer(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+critical_extension_verify_server(Config) when is_list(Config) ->
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     NewCertName = integer_to_list(erlang:unique_integer()) ++ ".pem",
@@ -833,6 +767,53 @@ critical_extension_verify_peer(Config) when is_list(Config) ->
                 {host, Hostname},
                 {from, self()},
                 {mfa, {ssl_test_lib, ReceiveFunction, []}},
+                {options, [{verify, verify_none}, {active, Active} | NewClientOpts]}]),
+
+    %% This certificate has a critical extension that we don't
+    %% understand.  Therefore, verification should fail.
+    tcp_delivery_workaround(Server, {error, {tls_alert, "unsupported certificate"}},
+                            Client, {error, {tls_alert, "unsupported certificate"}}),
+
+    ssl_test_lib:close(Server),
+    ok.
+%%--------------------------------------------------------------------
+
+critical_extension_verify_client() ->
+    [{doc,"Test cert that has a critical unknown extension in verify_peer mode"}].
+
+critical_extension_verify_client(Config) when is_list(Config) ->
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
+
+    KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
+    NewCertName = integer_to_list(erlang:unique_integer()) ++ ".pem",
+
+    ServerCertFile = proplists:get_value(certfile, ServerOpts),
+    NewServerCertFile = filename:join([PrivDir, "server", NewCertName]),
+    add_critical_netscape_cert_type(ServerCertFile, NewServerCertFile, KeyFile),
+    NewServerOpts = [{certfile, NewServerCertFile} | proplists:delete(certfile, ServerOpts)],
+
+    ClientCertFile = proplists:get_value(certfile, ClientOpts),
+    NewClientCertFile = filename:join([PrivDir, "client", NewCertName]),
+    add_critical_netscape_cert_type(ClientCertFile, NewClientCertFile, KeyFile),
+    NewClientOpts = [{certfile, NewClientCertFile} | proplists:delete(certfile, ClientOpts)],
+
+    {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
+
+    Server = ssl_test_lib:start_server_error(
+               [{node, ServerNode}, {port, 0},
+                {from, self()},
+                {mfa, {ssl_test_lib,  ReceiveFunction, []}},
+                {options, [{verify, verify_none}, {active, Active} | NewServerOpts]}]),
+    Port = ssl_test_lib:inet_port(Server),
+    Client = ssl_test_lib:start_client_error(
+               [{node, ClientNode}, {port, Port},
+                {host, Hostname},
+                {from, self()},
+                {mfa, {ssl_test_lib, ReceiveFunction, []}},
                 {options, [{verify, verify_peer}, {active, Active} | NewClientOpts]}]),
 
     %% This certificate has a critical extension that we don't
@@ -842,17 +823,16 @@ critical_extension_verify_peer(Config) when is_list(Config) ->
 
     ssl_test_lib:close(Server),
     ok.
-
 %%--------------------------------------------------------------------
 critical_extension_verify_none() ->
     [{doc,"Test cert that has a critical unknown extension in verify_none mode"}].
 
 critical_extension_verify_none(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
-    Active = ?config(active, Config),
-    ReceiveFunction =  ?config(receive_function, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
+    Active = proplists:get_value(active, Config),
+    ReceiveFunction =  proplists:get_value(receive_function, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     NewCertName = integer_to_list(erlang:unique_integer()) ++ ".pem",
@@ -917,9 +897,9 @@ no_authority_key_identifier() ->
       " but are present in trusted certs db."}].
 
 no_authority_key_identifier(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -973,9 +953,9 @@ no_authority_key_identifier_and_nonstandard_encoding() ->
       " authorityKeyIdentifier extension but are present in trusted certs db."}].
 
 no_authority_key_identifier_and_nonstandard_encoding(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
 
     KeyFile = filename:join(PrivDir, "otpCA/private/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -1034,9 +1014,9 @@ invalid_signature_server() ->
     [{doc,"Test client with invalid signature"}].
 
 invalid_signature_server(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
 
     KeyFile = filename:join(PrivDir, "server/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -1071,9 +1051,9 @@ invalid_signature_client() ->
     [{doc,"Test server with invalid signature"}].
 
 invalid_signature_client(Config) when is_list(Config) ->
-    ClientOpts = ?config(client_verification_opts, Config),
-    ServerOpts = ?config(server_verification_opts, Config),
-    PrivDir = ?config(priv_dir, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_verification_opts, Config),
+    ServerOpts = ssl_test_lib:ssl_options(server_verification_opts, Config),
+    PrivDir = proplists:get_value(priv_dir, Config),
 
     KeyFile = filename:join(PrivDir, "client/key.pem"),
     [KeyEntry] = ssl_test_lib:pem_to_der(KeyFile),
@@ -1109,8 +1089,8 @@ client_with_cert_cipher_suites_handshake() ->
     [{doc, "Test that client with a certificate without keyEncipherment usage "
     " extension can connect to a server with restricted cipher suites "}].
 client_with_cert_cipher_suites_handshake(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_verification_opts_digital_signature_only, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts =  ssl_test_lib:ssl_options(client_verification_opts_digital_signature_only, Config),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},
@@ -1137,7 +1117,7 @@ client_with_cert_cipher_suites_handshake(Config) when is_list(Config) ->
 server_verify_no_cacerts() ->
     [{doc,"Test server must have cacerts if it wants to verify client"}].
 server_verify_no_cacerts(Config) when is_list(Config) ->
-    ServerOpts =  ?config(server_opts, Config),
+    ServerOpts =  proplists:delete(cacertfile, ssl_test_lib:ssl_options(server_opts, Config)),
     {_, ServerNode, _} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server_error([{node, ServerNode}, {port, 0},
 					      {from, self()},
@@ -1151,8 +1131,8 @@ server_verify_no_cacerts(Config) when is_list(Config) ->
 unknown_server_ca_fail() ->
     [{doc,"Test that the client fails if the ca is unknown in verify_peer mode"}].
 unknown_server_ca_fail(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, []),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server_error([{node, ServerNode}, {port, 0},
 					      {from, self()},
@@ -1195,8 +1175,8 @@ unknown_server_ca_fail(Config) when is_list(Config) ->
 unknown_server_ca_accept_verify_none() ->
     [{doc,"Test that the client succeds if the ca is unknown in verify_none mode"}].
 unknown_server_ca_accept_verify_none(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, []),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},
@@ -1220,8 +1200,8 @@ unknown_server_ca_accept_verify_peer() ->
     [{doc, "Test that the client succeds if the ca is unknown in verify_peer mode"
      " with a verify_fun that accepts the unknown ca error"}].
 unknown_server_ca_accept_verify_peer(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts =ssl_test_lib:ssl_options(client_opts, []),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},
@@ -1259,8 +1239,8 @@ unknown_server_ca_accept_verify_peer(Config) when is_list(Config) ->
 unknown_server_ca_accept_backwardscompatibility() ->
     [{doc,"Test that old style verify_funs will work"}].
 unknown_server_ca_accept_backwardscompatibility(Config) when is_list(Config) ->
-    ClientOpts =  ?config(client_opts, Config),
-    ServerOpts =  ?config(server_verification_opts, Config),
+    ClientOpts = ssl_test_lib:ssl_options(client_opts, []),
+    ServerOpts =  ssl_test_lib:ssl_options(server_verification_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
     Server = ssl_test_lib:start_server([{node, ServerNode}, {port, 0},
 					{from, self()},

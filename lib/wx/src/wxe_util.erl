@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2008-2012. All Rights Reserved.
+%% Copyright Ericsson AB 2008-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -82,9 +82,11 @@ rec(Op) ->
 	{'_wxe_error_', Op, Error} -> 
 	    [{_,MF}] = ets:lookup(wx_debug_info,Op),
 	    erlang:error({Error, MF});
-	{'_wxe_error_', Old, Error} -> 
-	    [{_,MF}] = ets:lookup(wx_debug_info,Old),
-	    erlang:exit({Error, MF})
+	{'_wxe_error_', Old, Error} ->
+	    [{_,{M,F,A}}] = ets:lookup(wx_debug_info,Old),
+	    Msg = io_lib:format("~p in ~w:~w/~w", [Error, M, F, A]),
+	    wxe_master ! {wxe_driver, error, Msg},
+	    rec(Op)
     end.
 
 construct(Op, Args) ->

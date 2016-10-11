@@ -8,10 +8,16 @@ include $(ERL_TOP)/make/$(TARGET)/otp.mk
 MODULES= \
 	andor_SUITE \
 	apply_SUITE \
+	beam_block_SUITE \
+	beam_bool_SUITE \
 	beam_validator_SUITE \
 	beam_disasm_SUITE \
 	beam_except_SUITE \
+	beam_jump_SUITE \
+	beam_reorder_SUITE \
+	beam_type_SUITE \
 	beam_utils_SUITE \
+	bif_SUITE \
 	bs_bincomp_SUITE \
 	bs_bit_binaries_SUITE \
 	bs_construct_SUITE \
@@ -30,7 +36,7 @@ MODULES= \
 	map_SUITE \
 	match_SUITE \
 	misc_SUITE \
-	num_bif_SUITE \
+	overridden_bif_SUITE \
 	receive_SUITE \
 	record_SUITE \
 	regressions_SUITE \
@@ -42,8 +48,14 @@ MODULES= \
 NO_OPT= \
 	andor \
 	apply \
+	beam_block \
+	beam_bool \
 	beam_except \
+	beam_jump \
+	beam_reorder \
+	beam_type \
 	beam_utils \
+	bif \
 	bs_construct \
         bs_match \
 	bs_utf \
@@ -55,7 +67,7 @@ NO_OPT= \
 	map \
 	match \
 	misc \
-	num_bif \
+	overridden_bif \
 	receive \
 	record \
 	trycatch
@@ -63,7 +75,10 @@ NO_OPT= \
 INLINE= \
 	andor \
 	apply \
+	beam_block \
+	beam_bool \
 	beam_utils \
+	bif \
 	bs_bincomp \
 	bs_bit_binaries \
 	bs_construct \
@@ -77,7 +92,7 @@ INLINE= \
 	map \
 	match \
 	misc \
-	num_bif \
+	overridden_bif \
 	receive \
 	record
 
@@ -105,7 +120,7 @@ RELSYSDIR = $(RELEASE_PATH)/compiler_test
 # ----------------------------------------------------
 
 ERL_MAKE_FLAGS +=
-ERL_COMPILE_FLAGS += -I$(ERL_TOP)/lib/test_server/include +clint +clint0
+ERL_COMPILE_FLAGS += +clint +clint0
 
 EBIN = .
 

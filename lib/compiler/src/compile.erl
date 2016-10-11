@@ -26,6 +26,7 @@
 -export([forms/1,forms/2,noenv_forms/2]).
 -export([output_generated/1,noenv_output_generated/1]).
 -export([options/0]).
+-export([env_compiler_options/0]).
 
 %% Erlc interface.
 -export([compile/3,compile_beam/3,compile_asm/3,compile_core/3]).
@@ -40,6 +41,12 @@
 
 %%----------------------------------------------------------------------
 
+-type abstract_code() :: [erl_parse:abstract_form()].
+
+%% Internal representations used for 'from_asm' and 'from_beam' compilation can
+%% also be valid, but have no relevant types defined.
+-type forms() :: abstract_code() | cerl:c_module().
+
 -type option() :: atom() | {atom(), term()} | {'d', atom(), term()}.
 
 -type err_info() :: {erl_anno:line() | 'none',
@@ -48,6 +55,9 @@
 -type warnings() :: [{file:filename(), [err_info()]}].
 -type mod_ret()  :: {'ok', module()}
                   | {'ok', module(), cerl:c_module()} %% with option 'to_core'
+                  | {'ok',                            %% with option 'to_pp'
+                     module() | [],                   %% module() if 'to_exp'
+                     abstract_code()}
                   | {'ok', module(), warnings()}.
 -type bin_ret()  :: {'ok', module(), binary()}
                   | {'ok', module(), binary(), warnings()}.
@@ -78,7 +88,11 @@ file(File, Opts) when is_list(Opts) ->
 file(File, Opt) ->
     file(File, [Opt|?DEFAULT_OPTIONS]).
 
-forms(File) -> forms(File, ?DEFAULT_OPTIONS).
+-spec forms(abstract_code()) -> comp_ret().
+
+forms(Forms) -> forms(Forms, ?DEFAULT_OPTIONS).
+
+-spec forms(forms(), [option()] | option()) -> comp_ret().
 
 forms(Forms, Opts) when is_list(Opts) ->
     do_compile({forms,Forms}, [binary|Opts++env_default_opts()]);
@@ -106,6 +120,8 @@ noenv_file(File, Opts) when is_list(Opts) ->
 noenv_file(File, Opt) ->
     noenv_file(File, [Opt|?DEFAULT_OPTIONS]).
 
+-spec noenv_forms(forms(), [option()] | option()) -> comp_ret().
+
 noenv_forms(Forms, Opts) when is_list(Opts) ->
     do_compile({forms,Forms}, [binary|Opts]);
 noenv_forms(Forms, Opt) when is_atom(Opt) ->
@@ -118,6 +134,14 @@ noenv_output_generated(Opts) ->
     any(fun ({save_binary,_T,_F}) -> true;
 	    (_Other) -> false
 	end, Passes).
+
+%%
+%% Retrieve ERL_COMPILER_OPTIONS as a list of terms
+%%
+
+-spec env_compiler_options() -> [term()].
+
+env_compiler_options() -> env_default_opts().
 
 %%
 %%  Local functions
@@ -216,6 +240,8 @@ format_error({epp,E}) ->
     epp:format_error(E);
 format_error(write_error) ->
     "error writing file";
+format_error({write_error, Error}) ->
+    io_lib:format("error writing file: ~ts", [file:format_error(Error)]);
 format_error({rename,From,To,Error}) ->
     io_lib:format("failed to rename ~ts to ~ts: ~ts",
 		  [From,To,file:format_error(Error)]);
@@ -334,7 +360,7 @@ run_tc({Name,Fun}, St) ->
     T1 = erlang:monotonic_time(),
     Val = (catch Fun(St)),
     T2 = erlang:monotonic_time(),
-    Elapsed = erlang:convert_time_unit(T2 - T1, native, milli_seconds),
+    Elapsed = erlang:convert_time_unit(T2 - T1, native, millisecond),
     Mem0 = erts_debug:flat_size(Val)*erlang:system_info(wordsize),
     Mem = lists:flatten(io_lib:format("~.1f kB", [Mem0/1024])),
     io:format(" ~-30s: ~10.3f s ~12s\n",
@@ -620,13 +646,13 @@ standard_passes() ->
      {iff,'dabstr',{listing,"abstr"}},
      {iff,debug_info,?pass(save_abstract_code)},
 
-     ?pass(expand_module),
+     ?pass(expand_records),
      {iff,'dexp',{listing,"expand"}},
      {iff,'E',{src_listing,"E"}},
      {iff,'to_exp',{done,"E"}},
 
      %% Conversion to Core Erlang.
-     {pass,v3_core},
+     ?pass(core),
      {iff,'dcore',{listing,"core"}},
      {iff,'to_core0',{done,"core"}}
      | core_passes()].
@@ -671,11 +697,16 @@ asm_passes() ->
     %% Assembly level optimisations.
     [{delay,
       [{pass,beam_a},
+       {iff,da,{listing,"a"}},
        {unless,no_postopt,
-	[{pass,beam_block},
+	[{unless,no_reorder,{pass,beam_reorder}},
+	 {iff,dre,{listing,"reorder"}},
+	 {pass,beam_block},
 	 {iff,dblk,{listing,"block"}},
 	 {unless,no_except,{pass,beam_except}},
 	 {iff,dexcept,{listing,"except"}},
+	 {unless,no_bs_opt,{pass,beam_bs}},
+	 {iff,dbs,{listing,"bs"}},
 	 {unless,no_bopt,{pass,beam_bool}},
 	 {iff,dbool,{listing,"bool"}},
 	 {unless,no_topt,{pass,beam_type}},
@@ -703,6 +734,7 @@ asm_passes() ->
        {iff,no_postopt,[{pass,beam_clean}]},
 
        {pass,beam_z},
+       {iff,dz,{listing,"z"}},
        {iff,dopt,{listing,"optimize"}},
        {iff,'S',{listing,"S"}},
        {iff,'to_asm',{done,"S"}}]},
@@ -1180,7 +1212,7 @@ makedep_output(#compile{code=Code,options=Opts,ofile=Ofile}=St) ->
 		end,
 		{ok,St}
 	    catch
-		exit:_ ->
+		error:_ ->
 		    %% Couldn't write to output Makefile.
 		    Err = {St#compile.ifile,[{none,?MODULE,write_error}]},
 		    {error,St#compile{errors=St#compile.errors++[Err]}}
@@ -1195,13 +1227,17 @@ makedep_output(#compile{code=Code,options=Opts,ofile=Ofile}=St) ->
 	    {error,St#compile{errors=St#compile.errors++[Err]}}
     end.
 
-%% expand_module(State) -> State'
-%%  Do the common preprocessing of the input forms.
+expand_records(#compile{code=Code0,options=Opts}=St0) ->
+    Code = erl_expand_records:module(Code0, Opts),
+    {ok,St0#compile{code=Code}}.
 
-expand_module(#compile{code=Code,options=Opts0}=St0) ->
-    {Mod,Exp,Forms,Opts1} = sys_pre_expand:module(Code, Opts0),
+core(#compile{code=Forms,options=Opts0}=St) ->
+    Opts1 = lists:flatten([C || {attribute,_,compile,C} <- Forms] ++ Opts0),
     Opts = expand_opts(Opts1),
-    {ok,St0#compile{module=Mod,options=Opts,code={Mod,Exp,Forms}}}.
+    {ok,Core,Ws} = v3_core:module(Forms, Opts),
+    Mod = cerl:concrete(cerl:module_name(Core)),
+    {ok,St#compile{module=Mod,code=Core,options=Opts,
+		   warnings=St#compile.warnings++Ws}}.
 
 core_fold_module_after_inlining(#compile{code=Code0,options=Opts}=St) ->
     %% Inlining may produce code that generates spurious warnings.
@@ -1300,33 +1336,34 @@ generate_key(String) when is_list(String) ->
 encrypt({des3_cbc=Type,Key,IVec,BlockSize}, Bin0) ->
     Bin1 = case byte_size(Bin0) rem BlockSize of
 	       0 -> Bin0;
-	       N -> list_to_binary([Bin0,random_bytes(BlockSize-N)])
+	       N -> list_to_binary([Bin0,crypto:strong_rand_bytes(BlockSize-N)])
 	   end,
     Bin = crypto:block_encrypt(Type, Key, IVec, Bin1),
     TypeString = atom_to_list(Type),
     list_to_binary([0,length(TypeString),TypeString,Bin]).
-
-random_bytes(N) ->
-    _ = random:seed(erlang:time_offset(),
-		    erlang:monotonic_time(),
-		    erlang:unique_integer()),
-    random_bytes_1(N, []).
-
-random_bytes_1(0, Acc) -> Acc;
-random_bytes_1(N, Acc) -> random_bytes_1(N-1, [random:uniform(255)|Acc]).
 
 save_core_code(St) ->
     {ok,St#compile{core_code=cerl:from_records(St#compile.code)}}.
 
 beam_asm(#compile{ifile=File,code=Code0,
 		  abstract_code=Abst,mod_options=Opts0}=St) ->
-    Source = filename:absname(File),
+    Source = paranoid_absname(File),
     Opts1 = lists:map(fun({debug_info_key,_}) -> {debug_info_key,'********'};
 			 (Other) -> Other
 		      end, Opts0),
     Opts2 = [O || O <- Opts1, effects_code_generation(O)],
     case beam_asm:module(Code0, Abst, Source, Opts2) of
 	{ok,Code} -> {ok,St#compile{code=Code,abstract_code=[]}}
+    end.
+
+paranoid_absname(""=File) ->
+    File;
+paranoid_absname(File) ->
+    case file:get_cwd() of
+	{ok,Cwd} ->
+	    filename:absname(File, Cwd);
+	_ ->
+	    File
     end.
 
 test_native(#compile{options=Opts}) ->
@@ -1452,8 +1489,8 @@ save_binary_1(St) ->
 			 end,
 		    {error,St#compile{errors=St#compile.errors ++ Es}}
 	    end;
-	{error,_Error} ->
-	    Es = [{Tfile,[{none,compile,write_error}]}],
+	{error,Error} ->
+	    Es = [{Tfile,[{none,compile,{write_error,Error}}]}],
 	    {error,St#compile{errors=St#compile.errors ++ Es}}
     end.
 
@@ -1601,8 +1638,8 @@ listing(LFun, Ext, St) ->
 	    LFun(Lf, Code),
 	    ok = file:close(Lf),
 	    {ok,St};
-	{error,_Error} ->
-	    Es = [{Lfile,[{none,compile,write_error}]}],
+	{error,Error} ->
+	    Es = [{Lfile,[{none,compile,{write_error,Error}}]}],
 	    {error,St#compile{errors=St#compile.errors ++ Es}}
     end.
 
@@ -1612,11 +1649,8 @@ output_encoding(F, #compile{encoding = Encoding}) ->
     ok = io:setopts(F, [{encoding, Encoding}]),
     ok = io:fwrite(F, <<"%% ~s\n">>, [epp:encoding_to_string(Encoding)]).
 
-restore_expanded_types("P", Fs) ->
-    epp:restore_typed_record_fields(Fs);
 restore_expanded_types("E", {M,I,Fs0}) ->
-    Fs1 = restore_expand_module(Fs0),
-    Fs = epp:restore_typed_record_fields(Fs1),
+    Fs = restore_expand_module(Fs0),
     {M,I,Fs};
 restore_expanded_types(_Ext, Code) -> Code.
 
@@ -1628,6 +1662,8 @@ restore_expand_module([{attribute,Line,spec,[Arg]}|Fs]) ->
     [{attribute,Line,spec,Arg}|restore_expand_module(Fs)];
 restore_expand_module([{attribute,Line,callback,[Arg]}|Fs]) ->
     [{attribute,Line,callback,Arg}|restore_expand_module(Fs)];
+restore_expand_module([{attribute,Line,record,[R]}|Fs]) ->
+    [{attribute,Line,record,R}|restore_expand_module(Fs)];
 restore_expand_module([F|Fs]) ->
     [F|restore_expand_module(Fs)];
 restore_expand_module([]) -> [].
@@ -1674,6 +1710,7 @@ help(_) ->
 %%   Compile entry point for erl_compile.
 
 compile(File0, _OutFile, Options) ->
+    pre_load(),
     File = shorten_filename(File0),
     case file(File, make_erl_options(Options)) of
 	{ok,_Mod} -> ok;
@@ -1738,3 +1775,46 @@ make_erl_options(Opts) ->
 	end,
     Options ++ [report_errors, {cwd, Cwd}, {outdir, Outdir}|
 	        [{i, Dir} || Dir <- Includes]] ++ Specific.
+
+pre_load() ->
+    L = [beam_a,
+	 beam_asm,
+	 beam_block,
+	 beam_bool,
+	 beam_bs,
+	 beam_bsm,
+	 beam_clean,
+	 beam_dead,
+	 beam_dict,
+	 beam_except,
+	 beam_flatten,
+	 beam_jump,
+	 beam_opcodes,
+	 beam_peep,
+	 beam_receive,
+	 beam_reorder,
+	 beam_split,
+	 beam_trim,
+	 beam_type,
+	 beam_utils,
+	 beam_validator,
+	 beam_z,
+	 cerl,
+	 cerl_clauses,
+	 cerl_sets,
+	 cerl_trees,
+	 core_lib,
+	 epp,
+	 erl_bifs,
+	 erl_expand_records,
+	 erl_lint,
+	 erl_parse,
+	 erl_scan,
+	 sys_core_dsetel,
+	 sys_core_fold,
+	 v3_codegen,
+	 v3_core,
+	 v3_kernel,
+	 v3_life],
+    _ = code:ensure_modules_loaded(L),
+    ok.

@@ -54,7 +54,7 @@ unix_cases() ->
 	    end,
     [target_system, target_system_unicode] ++ RunErlCases ++ cases().
 
-win32_cases() -> 
+win32_cases() ->
     [{group,release} | cases()].
 
 %% Cases that can be run on all platforms
@@ -89,11 +89,16 @@ groups() ->
 %% {group,release}
 %% Top group for all cases using run_erl
 init_per_group(release, Config) ->
-    Dog = ?t:timetrap(?default_timeout),
-    P1gInstall = filename:join(priv_dir(Config),p1g_install),
-    ok = create_p1g(Config,P1gInstall),
-    ok = create_p1h(Config),
-    ?t:timetrap_cancel(Dog);
+    case {os:type(), os:version()} of
+	{{win32, nt}, Vsn} when Vsn > {6,1,999999} ->
+	    {skip, "Requires admin privileges on Win 8 and later"};
+	_ ->
+	    Dog = ?t:timetrap(?default_timeout),
+	    P1gInstall = filename:join(priv_dir(Config),p1g_install),
+	    ok = create_p1g(Config,P1gInstall),
+	    ok = create_p1h(Config),
+	    ?t:timetrap_cancel(Dog)
+    end;
 
 %% {group,release_single}
 %% Subgroup of {group,release}, contains all cases that are not
@@ -1058,6 +1063,12 @@ otp_9395_check_and_purge(cleanup,_Conf) ->
 %% OTP-9395 - performance problems when there are MANY processes
 %% Upgrade which updates many modules (brutal_purge)
 otp_9395_update_many_mods(Conf) when is_list(Conf) ->
+
+    %% "nain" is very slow - it fails this test quite often due to a
+    %% long sys call
+    %% /proc/cpuinfo: "clock: 1249MHz"
+    inet:gethostname() == {ok,"nain"} andalso throw({skip,"slow test host"}),
+
     %% Set some paths
     PrivDir = priv_dir(Conf),
     Dir = filename:join(PrivDir,"otp_9395_update_many_mods"),
@@ -1098,6 +1109,7 @@ otp_9395_update_many_mods(Conf) when is_list(Conf) ->
 		  [RelVsn2, filename:join(Rel2Dir, "sys.config")]),
 
     %% First, install release directly and check how much time it takes
+    rpc:call(Node,erlang,garbage_collect,[]),
     rpc:call(Node,erlang,system_flag,[scheduler_wall_time,true]),
     {TInst0,{ok, _, []}} =
 	timer:tc(rpc,call,[Node, release_handler, install_release, [RelVsn2]]),
@@ -1124,6 +1136,7 @@ otp_9395_update_many_mods(Conf) when is_list(Conf) ->
     %% Finally install release after check and purge, and check that
     %% this install was faster than the first.
     rpc:call(Node,erlang,system_flag,[scheduler_wall_time,false]),
+    rpc:call(Node,erlang,garbage_collect,[]),
     rpc:call(Node,erlang,system_flag,[scheduler_wall_time,true]),
     {TInst2,{ok, _RelVsn1, []}} =
 	timer:tc(rpc,call,[Node, release_handler, install_release, [RelVsn2]]),
@@ -1155,6 +1168,12 @@ otp_9395_update_many_mods(cleanup,_Conf) ->
 %% OTP-9395 - performance problems when there are MANY processes
 %% Upgrade which removes many modules (brutal_purge)
 otp_9395_rm_many_mods(Conf) when is_list(Conf) ->
+
+    %% "nain" is very slow - it fails this test quite often due to a
+    %% long sys call
+    %% /proc/cpuinfo: "clock: 1249MHz"
+    inet:gethostname() == {ok,"nain"} andalso throw({skip,"slow test host"}),
+
     %% Set some paths
     PrivDir = priv_dir(Conf),
     Dir = filename:join(PrivDir,"otp_9395_rm_many_mods"),
@@ -1195,6 +1214,7 @@ otp_9395_rm_many_mods(Conf) when is_list(Conf) ->
 		  [RelVsn2, filename:join(Rel2Dir, "sys.config")]),
 
     %% First, install release directly and check how much time it takes
+    rpc:call(Node,erlang,garbage_collect,[]),
     rpc:call(Node,erlang,system_flag,[scheduler_wall_time,true]),
     {TInst0,{ok, _, []}} =
 	timer:tc(rpc,call,[Node, release_handler, install_release, [RelVsn2]]),
@@ -1221,6 +1241,7 @@ otp_9395_rm_many_mods(Conf) when is_list(Conf) ->
     %% Finally install release after check and purge, and check that
     %% this install was faster than the first.
     rpc:call(Node,erlang,system_flag,[scheduler_wall_time,false]),
+    rpc:call(Node,erlang,garbage_collect,[]),
     rpc:call(Node,erlang,system_flag,[scheduler_wall_time,true]),
     {TInst2,{ok, _RelVsn1, []}} =
 	timer:tc(rpc,call,[Node, release_handler, install_release, [RelVsn2]]),
@@ -1361,7 +1382,7 @@ upgrade_supervisor(Conf) when is_list(Conf) ->
     ASupBeam2 = rpc:call(Node, code, which, [a_sup]),
 
     %% Check that the restart strategy and child spec is updated
-    {status, _, {module, _}, [_, _, _, _, [_,_,{data,[{"State",State}]}]]} =
+    {status, _, {module, _}, [_, _, _, _, [_,_,{data,[{"State",State}]}|_]]} =
 	rpc:call(Node,sys,get_status,[a_sup]),
     {state,_,RestartStrategy,[Child],_,_,_,_,_,_,_} = State,
     one_for_all = RestartStrategy, % changed from one_for_one
@@ -1756,8 +1777,6 @@ upgrade_gg(Conf) ->
     Nodes1 = [Gg1,Gg3,Gg4,Gg5] =
 	start_nodes(Conf,[Gg1Sname,Gg3Sname,Gg4Sname,Gg5Sname],"upgrade_gg"),
 
-    %% Give some time to synch nodes, then check global group info.
-    timer:sleep(1000),
     [check_gg_info(Node,Nodes1,[],Nodes1--[Node]) || Node <- Nodes1],
 
     %% register a process on each of the nodes
@@ -1913,7 +1932,7 @@ wait_nodes_up(Nodes, Tag) ->
 wait_nodes_up(Nodes0, Tag, Apps) ->
     ?t:format("wait_nodes_up(~p, ~p, ~p):",[Nodes0, Tag, Apps]),
     Nodes = fix_nodes(Nodes0),
-    wait_nodes_up(Nodes, Tag, lists:umerge(Apps,[kernel,stdlib,sasl]), 30).
+    wait_nodes_up(Nodes, Tag, lists:umerge(Apps,[kernel,stdlib,sasl]), 60).
 
 fix_nodes([{Node,InitPid}|Nodes]) ->
     [{Node,InitPid} | fix_nodes(Nodes)];
@@ -1955,7 +1974,7 @@ wait_nodes_up(Nodes, Tag, Apps, N) ->
 	    ?t:format("",[]),
 	    ok;
 	_ ->
-	    timer:sleep(1000),
+	    timer:sleep(2000),
 	    wait_nodes_up(Pang, Tag, Apps, N-1)
     end.
 
@@ -2444,36 +2463,26 @@ write_term_file(File,Term) ->
     ok = file:write_file(File,io_lib:format("~p.~n",[Term])).
     
 
-%% Check that global group info is correct
+%% Check that global group info is correct - try again for a maximum of 5 sec
 check_gg_info(Node,OtherAlive,OtherDead,Synced) ->
+    check_gg_info(Node,OtherAlive,OtherDead,Synced,5).
+
+check_gg_info(Node,OtherAlive,OtherDead,Synced,N) ->
     GGI = rpc:call(Node, global_group, info, []),
     GI = rpc:call(Node, global, info,[]),
     try do_check_gg_info(OtherAlive,OtherDead,Synced,GGI,GI) 
-    catch _:E ->
-	    ?t:format("~ncheck_gg_info failed for ~p: ~p~nwhen GGI was: ~p~n"
-		      "and GI was: ~p~n",
-		      [Node,E,GGI,GI]),
-	    %% An attempt to find out if it is only a timing issue
-	    %% that makes this fail every now and then:
-	    try_again_check(Node,GGI,GI,1),
-	    ?t:fail("check_gg_info failed")
+    catch _:E when N==0 ->
+	    ?t:format("~nERROR: check_gg_info failed for ~p:~n~p~n"
+		      "when GGI was: ~p~nand GI was: ~p~n",
+		      [Node,{E,erlang:get_stacktrace()},GGI,GI]),
+	    ?t:fail("check_gg_info failed");
+	  _:E ->
+	    ?t:format("~nWARNING: check_gg_info failed for ~p:~n~p~n"
+		      "when GGI was: ~p~nand GI was: ~p~n",
+		      [Node,{E,erlang:get_stacktrace()},GGI,GI]),
+	    timer:sleep(1000),
+	    check_gg_info(Node,OtherAlive,OtherDead,Synced,N-1)
     end.
-
-try_again_check(_Node,_GGI,_GI,6) ->
-    ok;
-try_again_check(Node,GGI,GI,N) ->
-    timer:sleep(1000),
-    case {rpc:call(Node,global_group,info,[]),
-	  rpc:call(Node,global,info,[])} of
-	{GGI,GI} ->
-	    ?t:format("~nAfter one more sek, GGI and GI are still the same"),
-	    try_again_check(Node,GGI,GI,N+1);
-	{NewGGI,NewGI} ->
-	    ?t:format("~nAfter one more sek:~nNew GGI: ~p~nNew GI: ~p~n",
-		      [NewGGI,NewGI]),
-	    try_again_check(Node,NewGGI,NewGI,N+1)
-    end.
-
 
 do_check_gg_info(OtherAlive,OtherDead,Synced,GGI,GI) ->
     {_,gg1} = lists:keyfind(own_group_name,1,GGI),

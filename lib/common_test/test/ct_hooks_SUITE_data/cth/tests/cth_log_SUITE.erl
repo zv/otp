@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2010-2011. All Rights Reserved.
+%% Copyright Ericsson AB 2010-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ suite() ->
 %% @end
 %%--------------------------------------------------------------------
 init_per_suite(Config) ->
+    application:start(sasl),
     Gen = spawn(fun() -> gen() end),
     [{gen,Gen}|Config].
 
@@ -52,6 +53,7 @@ end_per_suite(Config) ->
     Gen = proplists:get_value(gen, Config),
     exit(Gen, kill),
     ct:sleep(100),
+    application:stop(sasl),
     ok.
 
 %%--------------------------------------------------------------------
@@ -90,7 +92,8 @@ end_per_testcase(_TestCase, _Config) ->
 %% @end
 %%--------------------------------------------------------------------
 groups() ->
-    [{g1,[parallel,{repeat,10}],[tc1,tc2,tc3]}].
+    [{g1,[parallel,{repeat,10}],[tc1,tc2,tc3]},
+     {g2,[{repeat,10}],[tc1,tc2,tc3]}].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -101,7 +104,7 @@ groups() ->
 %% @end
 %%--------------------------------------------------------------------
 all() -> 
-    [{group,g1}].
+    [{group,g1},{group,g2}].
 
 tc1(_) ->
     ct:sleep(100),
@@ -121,5 +124,6 @@ gen() ->
 gen_loop(N) ->
     ct:log("Logger iteration: ~p", [N]),
     error_logger:error_report(N),
-    ct:sleep(200),
+    error_logger:info_report(progress, N),
+    ct:sleep(150),
     gen_loop(N+1).

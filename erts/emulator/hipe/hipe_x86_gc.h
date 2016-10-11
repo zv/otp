@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2004-2013. All Rights Reserved.
+ * Copyright Ericsson AB 2004-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,23 @@ nstack_walk_init_sdesc(const Process *p, struct nstack_walk_state *state)
     /* XXX: this appears to prevent a gcc-4.1.1 bug on x86 */
     __asm__ __volatile__("" : : "m"(*state) : "memory");
     return &state->sdesc0[0];
+#endif
+}
+
+static inline const struct sdesc*
+nstack_walk_init_sdesc_ignore_trap(const Process *p,
+				   struct nstack_walk_state *state)
+{
+#ifdef SKIP_YOUNGEST_FRAME
+    unsigned long ra = p->hipe.nsp[0];
+    const struct sdesc *sdesc;
+    if (ra == (unsigned long)nbif_stack_trap_ra)
+	ra = (unsigned long)p->hipe.ngra;
+    sdesc = hipe_find_sdesc(ra);
+    state->sdesc0 = sdesc;
+    return sdesc;
+#else
+    return nstack_walk_init_sdesc(p, state);
 #endif
 }
 

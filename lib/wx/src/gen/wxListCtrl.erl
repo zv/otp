@@ -38,7 +38,7 @@
   getItemData/2,getItemFont/2,getItemPosition/2,getItemRect/2,getItemRect/3,
   getItemSpacing/1,getItemState/3,getItemText/2,getItemTextColour/2,
   getNextItem/2,getNextItem/3,getSelectedItemCount/1,getTextColour/1,
-  getTopItem/1,getViewRect/1,hitTest/3,insertColumn/3,insertColumn/4,
+  getTopItem/1,getViewRect/1,hitTest/2,insertColumn/3,insertColumn/4,
   insertItem/2,insertItem/3,insertItem/4,refreshItem/2,refreshItems/3,
   scrollList/3,setBackgroundColour/2,setColumn/3,setColumnWidth/3,setImageList/3,
   setItem/2,setItem/4,setItem/5,setItemBackgroundColour/3,setItemColumnImage/4,
@@ -52,38 +52,38 @@
   centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
   close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
-  enable/1,enable/2,findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,
-  getBackgroundColour/1,getBackgroundStyle/1,getBestSize/1,getCaret/1,
-  getCharHeight/1,getCharWidth/1,getChildren/1,getClientSize/1,getContainingSizer/1,
-  getCursor/1,getDropTarget/1,getEventHandler/1,getExtraStyle/1,getFont/1,
-  getForegroundColour/1,getGrandParent/1,getHandle/1,getHelpText/1,
-  getId/1,getLabel/1,getMaxSize/1,getMinSize/1,getName/1,getParent/1,
-  getPosition/1,getRect/1,getScreenPosition/1,getScreenRect/1,getScrollPos/2,
-  getScrollRange/2,getScrollThumb/2,getSize/1,getSizer/1,getTextExtent/2,
-  getTextExtent/3,getToolTip/1,getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,
-  getWindowVariant/1,hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,
-  hide/1,inheritAttributes/1,initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,
-  isEnabled/1,isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,
-  isTopLevel/1,layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,
-  move/2,move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,
-  navigate/1,navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,
-  popEventHandler/2,popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,
-  refresh/2,refreshRect/2,refreshRect/3,releaseMouse/1,removeChild/2,
-  reparent/2,screenToClient/1,screenToClient/2,scrollLines/2,scrollPages/2,
-  scrollWindow/3,scrollWindow/4,setAcceleratorTable/2,setAutoLayout/2,
-  setBackgroundStyle/2,setCaret/2,setClientSize/2,setClientSize/3,setContainingSizer/2,
-  setCursor/2,setDoubleBuffered/2,setDropTarget/2,setExtraStyle/2,setFocus/1,
-  setFocusFromKbd/1,setFont/2,setForegroundColour/2,setHelpText/2,setId/2,
-  setLabel/2,setMaxSize/2,setMinSize/2,setName/2,setOwnBackgroundColour/2,
-  setOwnFont/2,setOwnForegroundColour/2,setPalette/2,setScrollPos/3,
-  setScrollPos/4,setScrollbar/5,setScrollbar/6,setSize/2,setSize/3,setSize/5,
-  setSize/6,setSizeHints/2,setSizeHints/3,setSizeHints/4,setSizer/2,
-  setSizer/3,setSizerAndFit/2,setSizerAndFit/3,setThemeEnabled/2,setToolTip/2,
-  setTransparent/2,setVirtualSize/2,setVirtualSize/3,setVirtualSizeHints/2,
-  setVirtualSizeHints/3,setVirtualSizeHints/4,setWindowStyle/2,setWindowVariant/2,
-  shouldInheritColours/1,show/1,show/2,thaw/1,transferDataFromWindow/1,
-  transferDataToWindow/1,update/1,updateWindowUI/1,updateWindowUI/2,
-  validate/1,warpPointer/3]).
+  dragAcceptFiles/2,enable/1,enable/2,findWindow/2,fit/1,fitInside/1,
+  freeze/1,getAcceleratorTable/1,getBackgroundColour/1,getBackgroundStyle/1,
+  getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,getChildren/1,
+  getClientSize/1,getContainingSizer/1,getCursor/1,getDropTarget/1,
+  getEventHandler/1,getExtraStyle/1,getFont/1,getForegroundColour/1,
+  getGrandParent/1,getHandle/1,getHelpText/1,getId/1,getLabel/1,getMaxSize/1,
+  getMinSize/1,getName/1,getParent/1,getPosition/1,getRect/1,getScreenPosition/1,
+  getScreenRect/1,getScrollPos/2,getScrollRange/2,getScrollThumb/2,
+  getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,getToolTip/1,
+  getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,getWindowVariant/1,
+  hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,hide/1,inheritAttributes/1,
+  initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,isEnabled/1,
+  isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,isTopLevel/1,
+  layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,
+  move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,navigate/1,
+  navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,popEventHandler/2,
+  popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,refresh/2,refreshRect/2,
+  refreshRect/3,releaseMouse/1,removeChild/2,reparent/2,screenToClient/1,
+  screenToClient/2,scrollLines/2,scrollPages/2,scrollWindow/3,scrollWindow/4,
+  setAcceleratorTable/2,setAutoLayout/2,setBackgroundStyle/2,setCaret/2,
+  setClientSize/2,setClientSize/3,setContainingSizer/2,setCursor/2,
+  setDoubleBuffered/2,setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,
+  setFont/2,setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
+  setMinSize/2,setName/2,setOwnBackgroundColour/2,setOwnFont/2,setOwnForegroundColour/2,
+  setPalette/2,setScrollPos/3,setScrollPos/4,setScrollbar/5,setScrollbar/6,
+  setSize/2,setSize/3,setSize/5,setSize/6,setSizeHints/2,setSizeHints/3,
+  setSizeHints/4,setSizer/2,setSizer/3,setSizerAndFit/2,setSizerAndFit/3,
+  setThemeEnabled/2,setToolTip/2,setTransparent/2,setVirtualSize/2,
+  setVirtualSize/3,setVirtualSizeHints/2,setVirtualSizeHints/3,setVirtualSizeHints/4,
+  setWindowStyle/2,setWindowVariant/2,shouldInheritColours/1,show/1,
+  show/2,thaw/1,transferDataFromWindow/1,transferDataToWindow/1,update/1,
+  updateWindowUI/1,updateWindowUI/2,validate/1,warpPointer/3]).
 
 -export_type([wxListCtrl/0]).
 %% @hidden
@@ -94,31 +94,34 @@ parent_class(_Class) -> erlang:error({badtype, ?MODULE}).
 
 -type wxListCtrl() :: wx:wx_object().
 
-%% @spec () -> wxListCtrl()
 %% @doc See <a href="http://www.wxwidgets.org/manuals/stable/wx_wxlistctrl.html#wxlistctrlwxlistctrl">external documentation</a>.
+-spec new() -> wxListCtrl().
 new() ->
     wxe_util:construct(?wxListCtrl_new_0, <<>>).
 
-%% @spec (Parent::wxWindow:wxWindow()) -> wxListCtrl()
-%% @equiv new(Parent, [])
+-spec new(Parent) -> wxListCtrl() when
+      Parent::wxWindow:wxWindow().
 new(Parent)
  when is_record(Parent, wx_ref) ->
   new(Parent, []).
 
-%% @spec (Parent::wxWindow:wxWindow(), [Option]) -> wxListCtrl()
-%% Option = {winid, integer()} |
-%%          {pos, {X::integer(),Y::integer()}} |
-%%          {size, {W::integer(),H::integer()}} |
-%%          {style, integer()} |
-%%          {validator, wx:wx()} |
-%%          {onGetItemText, OnGetItemText} |
-%%          {onGetItemAttr, OnGetItemAttr} |
-%%          {onGetItemColumnImage, OnGetItemColumnImage}
+%% @doc Creates a listctrl with optional callback functions:
 %%
-%% OnGetItemText = (This, Item, Column) -> wxString()
-%% OnGetItemAttr = (This, Item) -> wxListItemAttr()
+%% OnGetItemText = (This, Item, Column) -> unicode:charlist()
+%% OnGetItemAttr = (This, Item) -> wxListItemAttr:wxListItemAttr()
 %% OnGetItemColumnImage = (This, Item, Column) -> integer()
-%% @doc See <a href="http://www.wxwidgets.org/manuals/stable/wx_wxlistctrl.html#wxlistctrlwxlistctrl">external documentation</a>.
+%%
+%% See <a href="http://www.wxwidgets.org/manuals/stable/wx_wxlistctrl.html#wxlistctrlwxlistctrl">external documentation</a>.
+-spec new(Parent, [Option]) -> wxListCtrl() when
+      Parent::wxWindow:wxWindow(),
+      Option::{winid, integer()} |
+	      {pos, {X::integer(),Y::integer()}} |
+	      {size, {W::integer(),H::integer()}} |
+	      {style, integer()} |
+	      {validator, wx:wx_object()} |
+	      {onGetItemText, function()} |
+	      {onGetItemAttr, function()} |
+	      {onGetItemColumnImage, function()}.
 
 new(#wx_ref{type=ParentT,ref=ParentRef}, Options)
   when is_list(Options)->
@@ -156,7 +159,7 @@ arrange(This)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlarrange">external documentation</a>.
 -spec arrange(This, [Option]) -> boolean() when
 	This::wxListCtrl(),
-	Option :: {flag, integer()}.
+	Option :: {'flag', integer()}.
 arrange(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -167,7 +170,7 @@ arrange(#wx_ref{type=ThisT,ref=ThisRef}, Options)
   <<ThisRef:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlassignimagelist">external documentation</a>.
--spec assignImageList(This, ImageList, Which) -> ok when
+-spec assignImageList(This, ImageList, Which) -> 'ok' when
 	This::wxListCtrl(), ImageList::wxImageList:wxImageList(), Which::integer().
 assignImageList(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ImageListT,ref=ImageListRef},Which)
  when is_integer(Which) ->
@@ -177,7 +180,7 @@ assignImageList(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ImageListT,ref=Imag
   <<ThisRef:32/?UI,ImageListRef:32/?UI,Which:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlclearall">external documentation</a>.
--spec clearAll(This) -> ok when
+-spec clearAll(This) -> 'ok' when
 	This::wxListCtrl().
 clearAll(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -185,26 +188,27 @@ clearAll(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 
-%% @spec (This::wxListCtrl(), Parent::wxWindow:wxWindow()) -> bool()
 %% @equiv create(This,Parent, [])
+-spec create(This, Parent) -> wxListCtrl() when
+      This::wxWindow:wxWindow(),
+      Parent::wxWindow:wxWindow().
 create(This,Parent)
  when is_record(This, wx_ref),is_record(Parent, wx_ref) ->
   create(This,Parent, []).
 
-%% @spec (This::wxListCtrl(), Parent::wxWindow:wxWindow(), [Option]) -> bool()
-%% Option = {winid, integer()} |
-%%          {pos, {X::integer(),Y::integer()}} |
-%%          {size, {W::integer(),H::integer()}} |
-%%          {style, integer()} |
-%%          {validator, wx:wx()} |
-%%          {onGetItemText, OnGetItemText} |
-%%          {onGetItemAttr, OnGetItemAttr} |
-%%          {onGetItemColumnImage, OnGetItemColumnImage}
-%%
-%% OnGetItemText = (This, Item, Column) -> wxString()
-%% OnGetItemAttr = (This, Item) -> wxListItemAttr()
-%% OnGetItemColumnImage = (This, Item, Column) -> integer()
 %% @doc See <a href="http://www.wxwidgets.org/manuals/stable/wx_wxlistctrl.html#wxlistctrlcreate">external documentation</a>.
+-spec create(This, Parent, [Option]) -> wxListCtrl() when
+      This::wxWindow:wxWindow(),
+      Parent::wxWindow:wxWindow(),
+      Option::{winid, integer()} |
+	      {pos, {X::integer(),Y::integer()}} |
+	      {size, {W::integer(),H::integer()}} |
+	      {style, integer()} |
+	      {validator, wx:wx_object()} |
+	      {onGetItemText, function()} |
+	      {onGetItemAttr, function()} |
+	      {onGetItemColumnImage, function()}.
+
 create(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ParentT,ref=ParentRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -268,7 +272,7 @@ ensureVisible(#wx_ref{type=ThisT,ref=ThisRef},Item)
 	This::wxListCtrl(), Start::integer(), Str::unicode:chardata().
 
 findItem(This,Start,Str)
- when is_record(This, wx_ref),is_integer(Start),is_list(Str) ->
+ when is_record(This, wx_ref),is_integer(Start),?is_chardata(Str) ->
   findItem(This,Start,Str, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlfinditem">external documentation</a>.
@@ -278,11 +282,11 @@ findItem(This,Start,Str)
 %% 
 -spec findItem(This, Start, Str, [Option]) -> integer() when
 	This::wxListCtrl(), Start::integer(), Str::unicode:chardata(),
-	Option :: {partial, boolean()};
+	Option :: {'partial', boolean()};
       (This, Start, Pt, Direction) -> integer() when
 	This::wxListCtrl(), Start::integer(), Pt::{X::integer(), Y::integer()}, Direction::integer().
 findItem(#wx_ref{type=ThisT,ref=ThisRef},Start,Str, Options)
- when is_integer(Start),is_list(Str),is_list(Options) ->
+ when is_integer(Start),?is_chardata(Str),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
   Str_UC = unicode:characters_to_binary([Str,0]),
   MOpts = fun({partial, Partial}, Acc) -> [<<1:32/?UI,(wxe_util:from_bool(Partial)):32/?UI>>|Acc];
@@ -415,7 +419,7 @@ getItemRect(This,Item)
 -spec getItemRect(This, Item, [Option]) -> Result when
 	Result :: {Res ::boolean(), Rect::{X::integer(), Y::integer(), W::integer(), H::integer()}},
 	This::wxListCtrl(), Item::integer(),
-	Option :: {code, integer()}.
+	Option :: {'code', integer()}.
 getItemRect(#wx_ref{type=ThisT,ref=ThisRef},Item, Options)
  when is_integer(Item),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -471,8 +475,8 @@ getNextItem(This,Item)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlgetnextitem">external documentation</a>.
 -spec getNextItem(This, Item, [Option]) -> integer() when
 	This::wxListCtrl(), Item::integer(),
-	Option :: {geometry, integer()}
-		 | {state, integer()}.
+	Option :: {'geometry', integer()}
+		 | {'state', integer()}.
 getNextItem(#wx_ref{type=ThisT,ref=ThisRef},Item, Options)
  when is_integer(Item),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -516,13 +520,14 @@ getViewRect(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlhittest">external documentation</a>.
--spec hitTest(This, Point, Flags) -> integer() when
-	This::wxListCtrl(), Point::{X::integer(), Y::integer()}, Flags::integer().
-hitTest(#wx_ref{type=ThisT,ref=ThisRef},{PointX,PointY},Flags)
- when is_integer(PointX),is_integer(PointY),is_integer(Flags) ->
+-spec hitTest(This, Point) -> Result when
+	Result ::{Res ::integer(), Flags::integer(), PSubItem::integer()},
+	This::wxListCtrl(), Point::{X::integer(), Y::integer()}.
+hitTest(#wx_ref{type=ThisT,ref=ThisRef},{PointX,PointY})
+ when is_integer(PointX),is_integer(PointY) ->
   ?CLASS(ThisT,wxListCtrl),
   wxe_util:call(?wxListCtrl_HitTest,
-  <<ThisRef:32/?UI,PointX:32/?UI,PointY:32/?UI,Flags:32/?UI>>).
+  <<ThisRef:32/?UI,PointX:32/?UI,PointY:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlinsertcolumn">external documentation</a>.
 %% <br /> Also:<br />
@@ -535,7 +540,7 @@ hitTest(#wx_ref{type=ThisT,ref=ThisRef},{PointX,PointY},Flags)
 	This::wxListCtrl(), Col::integer(), Info::wxListItem:wxListItem().
 
 insertColumn(This,Col,Heading)
- when is_record(This, wx_ref),is_integer(Col),is_list(Heading) ->
+ when is_record(This, wx_ref),is_integer(Col),?is_chardata(Heading) ->
   insertColumn(This,Col,Heading, []);
 insertColumn(#wx_ref{type=ThisT,ref=ThisRef},Col,#wx_ref{type=InfoT,ref=InfoRef})
  when is_integer(Col) ->
@@ -547,10 +552,10 @@ insertColumn(#wx_ref{type=ThisT,ref=ThisRef},Col,#wx_ref{type=InfoT,ref=InfoRef}
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlinsertcolumn">external documentation</a>.
 -spec insertColumn(This, Col, Heading, [Option]) -> integer() when
 	This::wxListCtrl(), Col::integer(), Heading::unicode:chardata(),
-	Option :: {format, integer()}
-		 | {width, integer()}.
+	Option :: {'format', integer()}
+		 | {'width', integer()}.
 insertColumn(#wx_ref{type=ThisT,ref=ThisRef},Col,Heading, Options)
- when is_integer(Col),is_list(Heading),is_list(Options) ->
+ when is_integer(Col),?is_chardata(Heading),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
   Heading_UC = unicode:characters_to_binary([Heading,0]),
   MOpts = fun({format, Format}, Acc) -> [<<1:32/?UI,Format:32/?UI>>|Acc];
@@ -584,7 +589,7 @@ insertItem(#wx_ref{type=ThisT,ref=ThisRef},Index,ImageIndex)
   wxe_util:call(?wxListCtrl_InsertItem_2_0,
   <<ThisRef:32/?UI,Index:32/?UI,ImageIndex:32/?UI>>);
 insertItem(#wx_ref{type=ThisT,ref=ThisRef},Index,Label)
- when is_integer(Index),is_list(Label) ->
+ when is_integer(Index),?is_chardata(Label) ->
   ?CLASS(ThisT,wxListCtrl),
   Label_UC = unicode:characters_to_binary([Label,0]),
   wxe_util:call(?wxListCtrl_InsertItem_2_1,
@@ -594,14 +599,14 @@ insertItem(#wx_ref{type=ThisT,ref=ThisRef},Index,Label)
 -spec insertItem(This, Index, Label, ImageIndex) -> integer() when
 	This::wxListCtrl(), Index::integer(), Label::unicode:chardata(), ImageIndex::integer().
 insertItem(#wx_ref{type=ThisT,ref=ThisRef},Index,Label,ImageIndex)
- when is_integer(Index),is_list(Label),is_integer(ImageIndex) ->
+ when is_integer(Index),?is_chardata(Label),is_integer(ImageIndex) ->
   ?CLASS(ThisT,wxListCtrl),
   Label_UC = unicode:characters_to_binary([Label,0]),
   wxe_util:call(?wxListCtrl_InsertItem_3,
   <<ThisRef:32/?UI,Index:32/?UI,(byte_size(Label_UC)):32/?UI,(Label_UC)/binary, 0:(((8- ((4+byte_size(Label_UC)) band 16#7)) band 16#7))/unit:8,ImageIndex:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlrefreshitem">external documentation</a>.
--spec refreshItem(This, Item) -> ok when
+-spec refreshItem(This, Item) -> 'ok' when
 	This::wxListCtrl(), Item::integer().
 refreshItem(#wx_ref{type=ThisT,ref=ThisRef},Item)
  when is_integer(Item) ->
@@ -610,7 +615,7 @@ refreshItem(#wx_ref{type=ThisT,ref=ThisRef},Item)
   <<ThisRef:32/?UI,Item:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlrefreshitems">external documentation</a>.
--spec refreshItems(This, ItemFrom, ItemTo) -> ok when
+-spec refreshItems(This, ItemFrom, ItemTo) -> 'ok' when
 	This::wxListCtrl(), ItemFrom::integer(), ItemTo::integer().
 refreshItems(#wx_ref{type=ThisT,ref=ThisRef},ItemFrom,ItemTo)
  when is_integer(ItemFrom),is_integer(ItemTo) ->
@@ -656,7 +661,7 @@ setColumnWidth(#wx_ref{type=ThisT,ref=ThisRef},Col,Width)
   <<ThisRef:32/?UI,Col:32/?UI,Width:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetimagelist">external documentation</a>.
--spec setImageList(This, ImageList, Which) -> ok when
+-spec setImageList(This, ImageList, Which) -> 'ok' when
 	This::wxListCtrl(), ImageList::wxImageList:wxImageList(), Which::integer().
 setImageList(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ImageListT,ref=ImageListRef},Which)
  when is_integer(Which) ->
@@ -679,15 +684,15 @@ setItem(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=InfoT,ref=InfoRef}) ->
 	This::wxListCtrl(), Index::integer(), Col::integer(), Label::unicode:chardata().
 
 setItem(This,Index,Col,Label)
- when is_record(This, wx_ref),is_integer(Index),is_integer(Col),is_list(Label) ->
+ when is_record(This, wx_ref),is_integer(Index),is_integer(Col),?is_chardata(Label) ->
   setItem(This,Index,Col,Label, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitem">external documentation</a>.
 -spec setItem(This, Index, Col, Label, [Option]) -> integer() when
 	This::wxListCtrl(), Index::integer(), Col::integer(), Label::unicode:chardata(),
-	Option :: {imageId, integer()}.
+	Option :: {'imageId', integer()}.
 setItem(#wx_ref{type=ThisT,ref=ThisRef},Index,Col,Label, Options)
- when is_integer(Index),is_integer(Col),is_list(Label),is_list(Options) ->
+ when is_integer(Index),is_integer(Col),?is_chardata(Label),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
   Label_UC = unicode:characters_to_binary([Label,0]),
   MOpts = fun({imageId, ImageId}, Acc) -> [<<1:32/?UI,ImageId:32/?UI>>|Acc];
@@ -697,7 +702,7 @@ setItem(#wx_ref{type=ThisT,ref=ThisRef},Index,Col,Label, Options)
   <<ThisRef:32/?UI,Index:32/?UI,Col:32/?UI,(byte_size(Label_UC)):32/?UI,(Label_UC)/binary, 0:(((8- ((0+byte_size(Label_UC)) band 16#7)) band 16#7))/unit:8, BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitembackgroundcolour">external documentation</a>.
--spec setItemBackgroundColour(This, Item, Col) -> ok when
+-spec setItemBackgroundColour(This, Item, Col) -> 'ok' when
 	This::wxListCtrl(), Item::integer(), Col::wx:wx_colour().
 setItemBackgroundColour(#wx_ref{type=ThisT,ref=ThisRef},Item,Col)
  when is_integer(Item),tuple_size(Col) =:= 3; tuple_size(Col) =:= 4 ->
@@ -706,7 +711,7 @@ setItemBackgroundColour(#wx_ref{type=ThisT,ref=ThisRef},Item,Col)
   <<ThisRef:32/?UI,Item:32/?UI,(wxe_util:colour_bin(Col)):16/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitemcount">external documentation</a>.
--spec setItemCount(This, Count) -> ok when
+-spec setItemCount(This, Count) -> 'ok' when
 	This::wxListCtrl(), Count::integer().
 setItemCount(#wx_ref{type=ThisT,ref=ThisRef},Count)
  when is_integer(Count) ->
@@ -724,7 +729,7 @@ setItemData(#wx_ref{type=ThisT,ref=ThisRef},Item,Data)
   <<ThisRef:32/?UI,Item:32/?UI,Data:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitemfont">external documentation</a>.
--spec setItemFont(This, Item, F) -> ok when
+-spec setItemFont(This, Item, F) -> 'ok' when
 	This::wxListCtrl(), Item::integer(), F::wxFont:wxFont().
 setItemFont(#wx_ref{type=ThisT,ref=ThisRef},Item,#wx_ref{type=FT,ref=FRef})
  when is_integer(Item) ->
@@ -744,7 +749,7 @@ setItemImage(This,Item,Image)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitemimage">external documentation</a>.
 -spec setItemImage(This, Item, Image, [Option]) -> boolean() when
 	This::wxListCtrl(), Item::integer(), Image::integer(),
-	Option :: {selImage, integer()}.
+	Option :: {'selImage', integer()}.
 setItemImage(#wx_ref{type=ThisT,ref=ThisRef},Item,Image, Options)
  when is_integer(Item),is_integer(Image),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -782,17 +787,17 @@ setItemState(#wx_ref{type=ThisT,ref=ThisRef},Item,State,StateMask)
   <<ThisRef:32/?UI,Item:32/?UI,State:32/?UI,StateMask:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitemtext">external documentation</a>.
--spec setItemText(This, Item, Str) -> ok when
+-spec setItemText(This, Item, Str) -> 'ok' when
 	This::wxListCtrl(), Item::integer(), Str::unicode:chardata().
 setItemText(#wx_ref{type=ThisT,ref=ThisRef},Item,Str)
- when is_integer(Item),is_list(Str) ->
+ when is_integer(Item),?is_chardata(Str) ->
   ?CLASS(ThisT,wxListCtrl),
   Str_UC = unicode:characters_to_binary([Str,0]),
   wxe_util:cast(?wxListCtrl_SetItemText,
   <<ThisRef:32/?UI,Item:32/?UI,(byte_size(Str_UC)):32/?UI,(Str_UC)/binary, 0:(((8- ((4+byte_size(Str_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetitemtextcolour">external documentation</a>.
--spec setItemTextColour(This, Item, Col) -> ok when
+-spec setItemTextColour(This, Item, Col) -> 'ok' when
 	This::wxListCtrl(), Item::integer(), Col::wx:wx_colour().
 setItemTextColour(#wx_ref{type=ThisT,ref=ThisRef},Item,Col)
  when is_integer(Item),tuple_size(Col) =:= 3; tuple_size(Col) =:= 4 ->
@@ -801,7 +806,7 @@ setItemTextColour(#wx_ref{type=ThisT,ref=ThisRef},Item,Col)
   <<ThisRef:32/?UI,Item:32/?UI,(wxe_util:colour_bin(Col)):16/binary>>).
 
 %% @equiv setSingleStyle(This,Style, [])
--spec setSingleStyle(This, Style) -> ok when
+-spec setSingleStyle(This, Style) -> 'ok' when
 	This::wxListCtrl(), Style::integer().
 
 setSingleStyle(This,Style)
@@ -809,9 +814,9 @@ setSingleStyle(This,Style)
   setSingleStyle(This,Style, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetsinglestyle">external documentation</a>.
--spec setSingleStyle(This, Style, [Option]) -> ok when
+-spec setSingleStyle(This, Style, [Option]) -> 'ok' when
 	This::wxListCtrl(), Style::integer(),
-	Option :: {add, boolean()}.
+	Option :: {'add', boolean()}.
 setSingleStyle(#wx_ref{type=ThisT,ref=ThisRef},Style, Options)
  when is_integer(Style),is_list(Options) ->
   ?CLASS(ThisT,wxListCtrl),
@@ -822,7 +827,7 @@ setSingleStyle(#wx_ref{type=ThisT,ref=ThisRef},Style, Options)
   <<ThisRef:32/?UI,Style:32/?UI, BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsettextcolour">external documentation</a>.
--spec setTextColour(This, Col) -> ok when
+-spec setTextColour(This, Col) -> 'ok' when
 	This::wxListCtrl(), Col::wx:wx_colour().
 setTextColour(#wx_ref{type=ThisT,ref=ThisRef},Col)
  when tuple_size(Col) =:= 3; tuple_size(Col) =:= 4 ->
@@ -831,7 +836,7 @@ setTextColour(#wx_ref{type=ThisT,ref=ThisRef},Col)
   <<ThisRef:32/?UI,(wxe_util:colour_bin(Col)):16/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxlistctrl.html#wxlistctrlsetwindowstyleflag">external documentation</a>.
--spec setWindowStyleFlag(This, Style) -> ok when
+-spec setWindowStyleFlag(This, Style) -> 'ok' when
 	This::wxListCtrl(), Style::integer().
 setWindowStyleFlag(#wx_ref{type=ThisT,ref=ThisRef},Style)
  when is_integer(Style) ->
@@ -858,7 +863,7 @@ sortItems(#wx_ref{type=ThisT,ref=ThisRef}, SortCallBack)
 	SortId = wxe_util:get_cbId(Sort),
 	wxe_util:call(?wxListCtrl_SortItems, <<ThisRef:32/?UI,SortId:32/?UI>>).
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxListCtrl()) -> ok.
+-spec destroy(This::wxListCtrl()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxListCtrl),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
@@ -1181,6 +1186,8 @@ findWindow(This,Winid) -> wxWindow:findWindow(This,Winid).
 enable(This, Options) -> wxWindow:enable(This, Options).
 %% @hidden
 enable(This) -> wxWindow:enable(This).
+%% @hidden
+dragAcceptFiles(This,Accept) -> wxWindow:dragAcceptFiles(This,Accept).
 %% @hidden
 disable(This) -> wxWindow:disable(This).
 %% @hidden

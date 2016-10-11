@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2000-2012. All Rights Reserved.
+ * Copyright Ericsson AB 2000-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ typedef struct erl_fun_entry {
     Eterm module;		/* Tagged atom for module. */
     erts_refc_t refc;		/* Reference count: One for code + one for each
 				   fun object in each process. */
+    BeamInstr *pend_purge_address; /* address stored during a pending purge */
 } ErlFunEntry;
 
 /*
@@ -81,7 +82,10 @@ ErlFunEntry* erts_put_fun_entry2(Eterm mod, int old_uniq, int old_index,
 
 void erts_erase_fun_entry(ErlFunEntry* fe);
 void erts_cleanup_funs(ErlFunThing* funp);
-void erts_cleanup_funs_on_purge(BeamInstr* start, BeamInstr* end);
+void erts_fun_purge_prepare(BeamInstr* start, BeamInstr* end);
+void erts_fun_purge_abort_prepare(ErlFunEntry **funs, Uint no);
+void erts_fun_purge_abort_finalize(ErlFunEntry **funs, Uint no);
+void erts_fun_purge_complete(ErlFunEntry **funs, Uint no);
 void erts_dump_fun_entries(int, void *);
 
 #endif

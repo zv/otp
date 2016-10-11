@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2005-2012. All Rights Reserved.
+%% Copyright Ericsson AB 2005-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -625,7 +625,7 @@ conv_return(I, Map, Data) ->
   {I2, Map0, Data}.
 
 conv_store(I, Map, Data) ->
-  {Base1, Map0} = conv_dst(hipe_rtl:store_base(I), Map), % no immediates allowed
+  {Base1, Map0} = conv_src(hipe_rtl:store_base(I), Map),
   {Src, Map1} = conv_src(hipe_rtl:store_src(I), Map0),
   {Base2, Map2} = conv_src(hipe_rtl:store_offset(I), Map1),
   StOp = conv_stop(hipe_rtl:store_size(I)),
@@ -649,13 +649,27 @@ mk_store(StOp, Src, Base1, Base2) ->
   end.
 
 mk_store2(StOp, Src, Base1, Base2) ->
-  case hipe_sparc:is_temp(Base2) of
+  case hipe_sparc:is_temp(Base1) of
     true ->
-      mk_store_rr(StOp, Src, Base1, Base2);
+      case hipe_sparc:is_temp(Base2) of
+	true ->
+	  mk_store_rr(StOp, Src, Base1, Base2);
+	_ ->
+	  mk_store_ri(StOp, Src, Base1, Base2)
+      end;
     _ ->
-      mk_store_ri(StOp, Src, Base1, Base2)
+      case hipe_sparc:is_temp(Base2) of
+	true ->
+	  mk_store_ri(StOp, Src, Base2, Base1);
+	_ ->
+	  mk_store_ii(StOp, Src, Base1, Base2)
+      end
   end.
   
+mk_store_ii(StOp, Src, Base, Disp) ->
+  Tmp = new_untagged_temp(),
+  mk_set(Base, Tmp, mk_store_ri(StOp, Src, Tmp, Disp)).
+
 mk_store_ri(StOp, Src, Base, Disp) ->
   hipe_sparc:mk_store(StOp, Src, Base, Disp, 'new', []).
 
@@ -750,13 +764,25 @@ xaluop_commutes(XAluOp) ->
 
 xaluop_is_shift(XAluOp) ->
   case XAluOp of
+    'add' -> false;
+    'addcc' -> false;
+    'and' -> false;
+    'andcc' -> false;
+    'cmpcc' -> false;
+    'ldsb' -> false;
+    'ldub' -> false;
+    'lduw' -> false;
+    'or' -> false;
     'sll' -> true;
-    'srl' -> true;
+    %% 'sllx' -> true;
+    'smul' -> false;
     'sra' -> true;
-    'sllx' -> true;
-    'srlx' -> true;
-    'srax' -> true;
-    _ -> false
+    %% 'srax' -> true;
+    'srl' -> true;
+    %% 'srlx' -> true;
+    'sub' -> false;
+    'subcc' -> false;
+    'xor' -> false
   end.
 
 %%% Convert an extended SPARC AluOp back to a plain AluOp.
@@ -764,9 +790,23 @@ xaluop_is_shift(XAluOp) ->
 
 xaluop_normalise(XAluOp) ->
   case XAluOp of
-    'cmp' -> 'sub';
+    'add' -> 'add';
+    'addcc' -> 'addcc';
+    'and' -> 'and';
+    'andcc' -> 'andcc';
+    %% 'cmp' -> 'sub';
     'cmpcc' -> 'subcc';
-    _ -> XAluOp
+    'ldsb' -> 'ldsb';
+    'ldub' -> 'ldub';
+    'lduw' -> 'lduw';
+    'or' -> 'or';
+    'sll' -> 'sll';
+    'smul' -> 'smul';
+    'sra' -> 'sra';
+    'srl' -> 'srl';
+    'sub' -> 'sub';
+    'subcc' -> 'subcc';
+    'xor' -> 'xor'
   end.
 
 %%% Convert an RTL condition code.

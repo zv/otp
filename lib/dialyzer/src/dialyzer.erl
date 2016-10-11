@@ -282,7 +282,7 @@ cl_check_log(none) ->
 cl_check_log(Output) ->
   io:format("  Check output file `~s' for details\n", [Output]).
 
--spec format_warning(raw_warning()) -> string().
+-spec format_warning(raw_warning() | dial_warning()) -> string().
 
 format_warning(W) ->
   format_warning(W, basename).
@@ -336,6 +336,9 @@ message_to_string({guard_fail, []}) ->
   "Clause guard cannot succeed.\n";
 message_to_string({guard_fail, [Arg1, Infix, Arg2]}) ->
   io_lib:format("Guard test ~s ~s ~s can never succeed\n", [Arg1, Infix, Arg2]);
+message_to_string({map_update, [Type, Key]}) ->
+  io_lib:format("A key of type ~s cannot exist "
+		"in a map of type ~s\n", [Key, Type]);
 message_to_string({neg_guard_fail, [Arg1, Infix, Arg2]}) ->
   io_lib:format("Guard test not(~s ~s ~s) can never succeed\n",
 		[Arg1, Infix, Arg2]);

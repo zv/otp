@@ -60,7 +60,8 @@ followed by some FAQ, and then we’ll go into more details of the setup.
 
 
 Short Version
---------------------------
+-------------
+
 In the following sections, we've described as much as we could about the 
 installation of the tools needed. Once the tools are installed, building 
 is quite easy. We have also tried to make these instructions understandable 
@@ -391,7 +392,7 @@ tools:
 
         LIB="$WIN_VISUAL_STUDIO_ROOT\\VC\\lib\\;$WIN_SDK\\lib\\winv6.3\\um\\x86"
 
-        INCLUDE="$WIN_VISUAL_STUDIO_ROOT\\VC\\include\\;$WIN_SDK\\include\\shared\\;
+        INCLUDE="$WIN_VISUAL_STUDIO_ROOT\\VC\\include\\;$WIN_SDK\\include\\shared\\;\
         $WIN_SDK\\include\\um;$WIN_SDK\\include\\winrt\\;$WIN_SDK\\include\\um\\gl"
 
         export CYGWIN PATH LIBPATH LIB INCLUDE

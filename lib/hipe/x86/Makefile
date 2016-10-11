@@ -1,7 +1,7 @@
 #
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 2001-2012. All Rights Reserved.
+# Copyright Ericsson AB 2001-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,9 +60,9 @@ MODULES=hipe_rtl_to_x86 \
 	hipe_x86_ra_ls \
 	hipe_x86_ra_naive \
 	hipe_x86_ra_postconditions \
-	hipe_x86_ra_x87_ls \
 	hipe_x86_registers \
 	hipe_x86_spill_restore \
+	hipe_x86_subst \
 	hipe_x86_x87
 
 HRL_FILES=hipe_x86.hrl
@@ -84,7 +84,7 @@ DOC_FILES= $(MODULES:%=$(DOCS)/%.html)
 
 include ../native.mk
 
-ERL_COMPILE_FLAGS += +warn_exported_vars
+ERL_COMPILE_FLAGS += -Werror +warn_export_vars
 
 # ----------------------------------------------------
 # Targets
@@ -133,7 +133,6 @@ $(EBIN)/hipe_x86_ra: ../main/hipe.hrl
 $(EBIN)/hipe_x86_ra_dummy.beam: ../main/hipe.hrl
 $(EBIN)/hipe_x86_ra_ls.beam: ../main/hipe.hrl
 $(EBIN)/hipe_x86_ra_postconditions.beam: ../main/hipe.hrl
-$(EBIN)/hipe_x86_ra_x87_ls.beam: ../main/hipe.hrl
 $(EBIN)/hipe_x86_registers.beam: ../rtl/hipe_literals.hrl
 $(EBIN)/hipe_x86_spill_restore.beam: ../main/hipe.hrl ../flow/cfg.hrl
 $(EBIN)/hipe_x86_x87.beam: ../main/hipe.hrl

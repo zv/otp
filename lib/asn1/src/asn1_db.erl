@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1997-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -106,7 +106,9 @@ loop(#state{parent = Parent, monitor = MRef, table = Table,
             loop(State);
         {save, OutFile, Mod} ->
             [{_,Mtab}] = ets:lookup(Table, Mod),
-            ok = ets:tab2file(Mtab, OutFile),
+	    TempFile = OutFile ++ ".#temp",
+            ok = ets:tab2file(Mtab, TempFile),
+	    ok = file:rename(TempFile, OutFile),
             loop(State);
         {From, {new, Mod, Erule}} ->
             [] = ets:lookup(Table, Mod),	%Assertion.

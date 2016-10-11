@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  * 
- * Copyright Ericsson AB 2006-2010. All Rights Reserved.
+ * Copyright Ericsson AB 2006-2016. All Rights Reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,35 @@ int erts_milli_sleep(long);
 #ifdef __WIN32__
 int erts_map_win_error_to_errno(DWORD win_error);
 int erts_get_last_win_errno(void);
+#endif
+
+#if defined(__APPLE__) && defined(__MACH__) && !defined(__DARWIN__)
+#define __DARWIN__ 1
+#endif
+
+/*
+ * ERTS_PREMATURE_TIMEOUT() expects time units
+ * 1000 (millisec), 1000000 (microsec), or
+ * 1000000000 (nanosec). Might not work properly
+ * otherwise.
+ */
+#undef ERTS_USE_PREMATURE_TIMEOUT
+#undef ERTS_PREMATURE_TIMEOUT
+
+#if defined(__DARWIN__)
+#define ERTS_USE_PREMATURE_TIMEOUT 1
+#define ERTS_PREMATURE_TIMEOUT(TMO, TU)		\
+    ((TMO) >= 1 * ((TU) / 1000)			\
+     ? ((TMO) >= 20 * ((TU) / 1000)		\
+	? 15 * ((TU) / 1000)			\
+	: ((TMO) >= 5 * ((TU) / 1000)		\
+	   ? 3 * ((TU) / 1000)			\
+	   : 5 * ((TU) / 10000)))		\
+     : 0)
+
+#else
+#define ERTS_USE_PREMATURE_TIMEOUT 0
+#define ERTS_PREMATURE_TIMEOUT(TMO, TU) (0)
 #endif
 
 #endif /* #ifndef ERL_MISC_UTILS_H_ */

@@ -46,11 +46,13 @@ MODULES= \
 	gen_event_SUITE \
 	gen_fsm_SUITE \
 	gen_server_SUITE \
+	gen_statem_SUITE \
 	id_transform_SUITE \
 	io_SUITE \
 	io_proto_SUITE \
 	lists_SUITE \
 	log_mf_h_SUITE \
+	math_SUITE \
 	ms_transform_SUITE \
 	proc_lib_SUITE \
 	qlc_SUITE \
@@ -107,8 +109,7 @@ RELSYSDIR = $(RELEASE_PATH)/stdlib_test
 # ----------------------------------------------------
 
 ERL_MAKE_FLAGS +=
-ERL_COMPILE_FLAGS += -I$(ERL_TOP)/lib/test_server/include \
-		-I$(ERL_TOP)/lib/kernel/include \
+ERL_COMPILE_FLAGS += -I$(ERL_TOP)/lib/kernel/include \
 		-I$(ERL_TOP)/lib/stdlib/include
 
 EBIN = .

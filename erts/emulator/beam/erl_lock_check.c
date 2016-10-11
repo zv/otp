@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2005-2013. All Rights Reserved.
+ * Copyright Ericsson AB 2005-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,7 +96,9 @@ static erts_lc_lock_order_t erts_lock_order[] = {
     {	"dist_entry",				"address"		},
     {	"dist_entry_links",			"address"		},
     {   "code_write_permission",                NULL                    },
+    {	"purge_state",		      		NULL			},
     {	"proc_status",				"pid"			},
+    {	"proc_trace",				"pid"			},
     {   "ports_snapshot",                       NULL                    },
     {	"meta_name_tab",	         	"address"		},
     {	"meta_main_tab_slot",			"address"		},
@@ -111,11 +113,9 @@ static erts_lc_lock_order_t erts_lock_order[] = {
     {	"export_tab",				NULL			},
     {	"fun_tab",				NULL			},
     {	"environ",				NULL			},
+    {	"release_literal_areas",		NULL			},
 #endif
     {	"efile_drv",				"address"		},
-#if defined(ENABLE_CHILD_WAITER_THREAD) || defined(ERTS_SMP)
-    {	"child_status",				NULL			},
-#endif
     {	"drv_ev_state_grow",			NULL,   		},
     {	"drv_ev_state",				"address"		},
     {	"safe_hash",				"address"		},
@@ -140,6 +140,8 @@ static erts_lc_lock_order_t erts_lock_order[] = {
     {	"mmap_init_atoms",			NULL			},
     {	"drv_tsd",				NULL			},
     {	"async_enq_mtx",			NULL			},
+    {   "msacc_list_mutex",                     NULL                    },
+    {   "msacc_unmanaged_mutex",                NULL                    },
 #ifdef ERTS_SMP
     {	"atom_tab",				NULL			},
     {	"misc_op_list_pre_alloc_lock",		"address"		},
@@ -149,6 +151,7 @@ static erts_lc_lock_order_t erts_lock_order[] = {
     {	"dist_entry_out_queue",			"address"		},
     {	"port_sched_lock",			"port_id"		},
     {	"sys_msg_q", 				NULL			},
+    {	"tracer_mtx", 				NULL			},
     {   "port_table",                           NULL                    },
 #endif
     {	"mtrace_op",				NULL			},
@@ -156,17 +159,11 @@ static erts_lc_lock_order_t erts_lock_order[] = {
     {	"instr",				NULL			},
     {	"alcu_allocator",			"index"			},
     {	"mseg",					NULL			},
-#if HALFWORD_HEAP
-    {	"pmmap",				NULL			},
-#endif
 #ifdef ERTS_SMP
     {	"port_task_pre_alloc_lock",		"address"		},
     {	"proclist_pre_alloc_lock",		"address"		},
     {	"xports_list_pre_alloc_lock",		"address"		},
     {	"inet_buffer_stack_lock",		NULL			},
-    {	"gc_info",				NULL			},
-    {	"io_wake",				NULL			},
-    {	"timer_wheel",				NULL			},
     {	"system_block",				NULL			},
     {	"timeofday",				NULL			},
     {	"get_time",				NULL			},

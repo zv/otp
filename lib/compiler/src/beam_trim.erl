@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2007-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -230,7 +230,7 @@ safe_labels([], Acc) -> gb_sets:from_list(Acc).
 
 frame_layout(Is, Kills, #st{safe=Safe,lbl=D}) ->
     N = frame_size(Is, Safe),
-    IsKilled = fun(R) -> beam_utils:is_killed(R, Is, D) end,
+    IsKilled = fun(R) -> beam_utils:is_not_used(R, Is, D) end,
     {N,frame_layout_1(Kills, 0, N, IsKilled, [])}.
 
 frame_layout_1([{kill,{y,Y}}=I|Ks], Y, N, IsKilled, Acc) ->

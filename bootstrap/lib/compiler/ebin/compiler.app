@@ -1,7 +1,7 @@
 % This is an -*- erlang -*- file.
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1997-2013. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -19,12 +19,13 @@
 
 {application, compiler,
  [{description, "ERTS  CXC 138 10"},
-  {vsn, "6.0.2"},
+  {vsn, "7.0.2"},
   {modules, [
 	     beam_a,
 	     beam_asm,
 	     beam_block,
 	     beam_bool,
+	     beam_bs,
 	     beam_bsm,
 	     beam_clean,
 	     beam_dead,
@@ -37,6 +38,7 @@
 	     beam_opcodes,
 	     beam_peep,
 	     beam_receive,
+	     beam_reorder,
 	     beam_split,
 	     beam_trim,
 	     beam_type,
@@ -61,7 +63,6 @@
 	     sys_core_fold_lists,
 	     sys_core_inline,
 	     sys_pre_attributes,
-	     sys_pre_expand,
 	     v3_codegen,
 	     v3_core,
 	     v3_kernel,
@@ -71,5 +72,5 @@
   {registered, []},
   {applications, [kernel, stdlib]},
   {env, []},
-  {runtime_dependencies, ["stdlib-2.5","kernel-4.0","hipe-3.12","erts-7.0",
+  {runtime_dependencies, ["stdlib-2.5","kernel-4.0","hipe-3.12","erts-9.0",
 			  "crypto-3.6"]}]}.

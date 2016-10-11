@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2008-2010. All Rights Reserved.
+%% Copyright Ericsson AB 2008-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@
 -define(UI, unsigned-native).
 -define(I,  signed-native).
 -define(F,  float-native).
+
+-define(is_chardata(String), (is_list(String) orelse is_binary(String))).
 
 -define(WXE_IDENTIFIER, wx_env).
 -define(BATCH_BEGIN,    0).

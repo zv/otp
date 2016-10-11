@@ -3,7 +3,7 @@
 #
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 2000-2012. All Rights Reserved.
+# Copyright Ericsson AB 2000-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -166,7 +166,7 @@ release_docs_spec: docs
 	$(INSTALL_DIR) "$(RELSYSDIR)/doc/html"
 	$(INSTALL_DIR) "$(RELSYSDIR)/doc/html/java/$(JAVA_PKG_PATH)"
 	$(INSTALL_DATA) $(INFO_FILE) "$(RELSYSDIR)"
-	(/bin/cp -rf  ../html "$(RELSYSDIR)/doc")
+	($(CP) -rf  ../html "$(RELSYSDIR)/doc")
 
 #	$(INSTALL_DATA) $(GIF_FILES) $(EXTRA_FILES) $(HTML_FILES) \
 #		"$(RELSYSDIR)/doc/html"

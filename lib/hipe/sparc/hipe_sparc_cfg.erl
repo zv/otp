@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2001-2009. All Rights Reserved.
+%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 -export([init/1,
          labels/1, start_label/1,
          succ/2,
+         map_bbs/2, fold_bbs/3,
          bb/2, bb_add/3]).
 -export([postorder/1, reverse_postorder/1]).
 -export([linearise/1]).

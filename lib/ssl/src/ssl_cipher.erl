@@ -1,7 +1,7 @@
-%%
+%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2007-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2007-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -38,18 +38,20 @@
 	 cipher_init/3, decipher/6, cipher/5, decipher_aead/6, cipher_aead/6,
 	 suite/1, suites/1, all_suites/1, 
 	 ec_keyed_suites/0, anonymous_suites/1, psk_suites/1, srp_suites/0,
-	 rc4_suites/1, openssl_suite/1, openssl_suite_name/1, filter/2, filter_suites/1,
-	 hash_algorithm/1, sign_algorithm/1, is_acceptable_hash/2, is_fallback/1]).
+	 rc4_suites/1, des_suites/1, openssl_suite/1, openssl_suite_name/1, filter/2, filter_suites/1,
+	 hash_algorithm/1, sign_algorithm/1, is_acceptable_hash/2, is_fallback/1,
+	 random_bytes/1]).
 
 -export_type([cipher_suite/0,
 	      erl_cipher_suite/0, openssl_cipher_suite/0,
 	      hash/0, key_algo/0, sign_algo/0]).
 
--type cipher()            :: null |rc4_128 | idea_cbc | des40_cbc | des_cbc | '3des_ede_cbc' 
+-type cipher()            :: null |rc4_128 | des_cbc | '3des_ede_cbc' 
 			   | aes_128_cbc |  aes_256_cbc | aes_128_gcm | aes_256_gcm | chacha20_poly1305.
--type hash()              :: null | sha | md5 | sha224 | sha256 | sha384 | sha512.
+-type hash()              :: null | md5 | sha | sha224 | sha256 | sha384 | sha512.
 -type sign_algo()         :: rsa | dsa | ecdsa.
--type key_algo()          :: null | rsa | dhe_rsa | dhe_dss | ecdhe_ecdsa| ecdh_ecdsa | ecdh_rsa| srp_rsa| srp_dss | psk | dhe_psk | rsa_psk | dh_anon | ecdh_anon | srp_anon.
+-type key_algo()          :: null | rsa | dhe_rsa | dhe_dss | ecdhe_ecdsa| ecdh_ecdsa | ecdh_rsa| srp_rsa| srp_dss | 
+			     psk | dhe_psk | rsa_psk | dh_anon | ecdh_anon | srp_anon.
 -type erl_cipher_suite()  :: {key_algo(), cipher(), hash()} % Pre TLS 1.2 
 			     %% TLS 1.2, internally PRE TLS 1.2 will use default_prf
 			   | {key_algo(), cipher(), hash(), hash() | default_prf}. 
@@ -102,7 +104,7 @@ cipher_init(?RC4, IV, Key) ->
     State = crypto:stream_init(rc4, Key),
     #cipher_state{iv = IV, key = Key, state = State};
 cipher_init(?AES_GCM, IV, Key) ->
-    <<Nonce:64>> = ssl:random_bytes(8),
+    <<Nonce:64>> = random_bytes(8),
     #cipher_state{iv = IV, key = Key, nonce = Nonce};
 cipher_init(_BCA, IV, Key) ->
     #cipher_state{iv = IV, key = Key}.
@@ -212,7 +214,7 @@ decipher(?RC4, HashSz, CipherState = #cipher_state{state = State0}, Fragment, _,
 	    %% alerts may permit certain attacks against CBC mode as used in
 	    %% TLS [CBCATT].  It is preferable to uniformly use the
 	    %% bad_record_mac alert to hide the specific type of the error."
-	    ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC)
+            ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC, decryption_failed)
     end;
 
 decipher(?DES, HashSz, CipherState, Fragment, Version, PaddingCheck) ->
@@ -270,7 +272,7 @@ block_decipher(Fun, #cipher_state{key=Key, iv=IV} = CipherState0,
 	    %% alerts may permit certain attacks against CBC mode as used in
 	    %% TLS [CBCATT].  It is preferable to uniformly use the
 	    %% bad_record_mac alert to hide the specific type of the error."
-	    ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC)
+            ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC, decryption_failed)
     end.
 
 aead_ciphertext_to_state(chacha20_poly1305, SeqNo, _IV, AAD0, Fragment, _Version) ->
@@ -294,11 +296,11 @@ aead_decipher(Type, #cipher_state{key = Key, iv = IV} = CipherState,
 	    Content when is_binary(Content) ->
 		{Content, CipherState};
 	    _ ->
-		?ALERT_REC(?FATAL, ?BAD_RECORD_MAC)
+                ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC, decryption_failed)
 	end
     catch
 	_:_ ->
-	    ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC)
+            ?ALERT_REC(?FATAL, ?BAD_RECORD_MAC, decryption_failed)
     end.
 
 %%--------------------------------------------------------------------
@@ -316,7 +318,8 @@ all_suites(Version) ->
 	++ anonymous_suites(Version)
 	++ psk_suites(Version)
 	++ srp_suites()
-        ++ rc4_suites(Version).
+        ++ rc4_suites(Version)
+        ++ des_suites(Version).
 %%--------------------------------------------------------------------
 -spec anonymous_suites(ssl_record:ssl_version() | integer()) -> [cipher_suite()].
 %%
@@ -330,21 +333,27 @@ anonymous_suites({3, N}) ->
 anonymous_suites(N)
   when N >= 3 ->
     [?TLS_DH_anon_WITH_AES_128_GCM_SHA256,
-     ?TLS_DH_anon_WITH_AES_256_GCM_SHA384
-    ] ++ anonymous_suites(0);
-
-anonymous_suites(_) ->
-    [?TLS_DH_anon_WITH_RC4_128_MD5,
-     ?TLS_DH_anon_WITH_DES_CBC_SHA,
-     ?TLS_DH_anon_WITH_3DES_EDE_CBC_SHA,
-     ?TLS_DH_anon_WITH_AES_128_CBC_SHA,
-     ?TLS_DH_anon_WITH_AES_256_CBC_SHA,
+     ?TLS_DH_anon_WITH_AES_256_GCM_SHA384,
      ?TLS_DH_anon_WITH_AES_128_CBC_SHA256,
      ?TLS_DH_anon_WITH_AES_256_CBC_SHA256,
-     ?TLS_ECDH_anon_WITH_RC4_128_SHA,
-     ?TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA,
      ?TLS_ECDH_anon_WITH_AES_128_CBC_SHA,
-     ?TLS_ECDH_anon_WITH_AES_256_CBC_SHA].
+     ?TLS_ECDH_anon_WITH_AES_256_CBC_SHA,
+     ?TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA,
+     ?TLS_DH_anon_WITH_RC4_128_MD5];
+
+anonymous_suites(2) ->
+    [?TLS_ECDH_anon_WITH_AES_128_CBC_SHA,
+     ?TLS_ECDH_anon_WITH_AES_256_CBC_SHA,
+     ?TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA,
+     ?TLS_DH_anon_WITH_DES_CBC_SHA,
+     ?TLS_DH_anon_WITH_RC4_128_MD5];
+
+anonymous_suites(N)  when N == 0;
+			  N == 1 ->
+    [?TLS_DH_anon_WITH_RC4_128_MD5,
+     ?TLS_DH_anon_WITH_3DES_EDE_CBC_SHA,
+     ?TLS_DH_anon_WITH_DES_CBC_SHA
+    ].
 
 %%--------------------------------------------------------------------
 -spec psk_suites(ssl_record:ssl_version() | integer()) -> [cipher_suite()].
@@ -420,6 +429,16 @@ rc4_suites({3, N}) when N =< 3 ->
      ?TLS_RSA_WITH_RC4_128_MD5,
      ?TLS_ECDH_ECDSA_WITH_RC4_128_SHA,
      ?TLS_ECDH_RSA_WITH_RC4_128_SHA].
+%%--------------------------------------------------------------------
+-spec des_suites(Version::ssl_record:ssl_version()) -> [cipher_suite()].
+%%
+%% Description: Returns a list of the cipher suites
+%% with DES cipher, only supported if explicitly set by user. 
+%% Are not considered secure any more. 
+%%--------------------------------------------------------------------
+des_suites(_)->
+    [?TLS_DHE_RSA_WITH_DES_CBC_SHA,
+     ?TLS_RSA_WITH_DES_CBC_SHA].
 
 %%--------------------------------------------------------------------
 -spec suite_definition(cipher_suite()) -> erl_cipher_suite().
@@ -1445,6 +1464,9 @@ is_acceptable_cipher(Cipher, Algos)
 is_acceptable_cipher(Cipher, Algos)
   when Cipher == chacha20_poly1305 ->
     proplists:get_bool(Cipher, Algos);
+is_acceptable_cipher(Cipher, Algos)
+  when Cipher == rc4_128 ->
+    proplists:get_bool(rc4, Algos);
 is_acceptable_cipher(_, _) ->
     true.
 
@@ -1460,6 +1482,16 @@ is_acceptable_prf(Prf, Algos) ->
 
 is_fallback(CipherSuites)->
     lists:member(?TLS_FALLBACK_SCSV, CipherSuites).
+
+
+%%--------------------------------------------------------------------
+-spec random_bytes(integer()) -> binary().
+
+%%
+%% Description: Generates cryptographically secure random sequence 
+%%--------------------------------------------------------------------
+random_bytes(N) ->
+    crypto:strong_rand_bytes(N).
 
 %%--------------------------------------------------------------------
 %%% Internal functions
@@ -1701,7 +1733,7 @@ get_padding_aux(BlockSize, PadLength) ->
 
 random_iv(IV) ->
     IVSz = byte_size(IV),
-    ssl:random_bytes(IVSz).
+    random_bytes(IVSz).
 
 next_iv(Bin, IV) ->
     BinSz = byte_size(Bin),
@@ -1729,7 +1761,8 @@ dhe_rsa_suites() ->
      ?TLS_DHE_RSA_WITH_DES_CBC_SHA,
      ?TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
      ?TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
-     ?TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256].
+     ?TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+    ].
 
 psk_rsa_suites() ->
     [?TLS_RSA_PSK_WITH_AES_256_GCM_SHA384,

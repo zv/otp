@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1997-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 -module(event_channel_SUITE).
 
--include_lib("test_server/include/test_server.hrl").
+-include_lib("common_test/include/ct.hrl").
 -include_lib("orber/include/corba.hrl").
 -include_lib("orber/COSS/CosNaming/CosNaming.hrl").
 -include_lib("orber/src/orber_iiop.hrl").
@@ -32,7 +32,7 @@
 %% Macros
 %%-----------------------------------------------------------------
 
--define(default_timeout, ?t:minutes(5)).
+-define(default_timeout, test_server:minutes(5)).
 
 
 -define(match(ExpectedRes, Expr),
@@ -46,7 +46,7 @@
 		    _ ->
 			io:format("###### ERROR ERROR ######~n~p~n",
 				  [AcTuAlReS]),
-			?line exit(AcTuAlReS)
+			exit(AcTuAlReS)
 		end
 	end()).
 
@@ -87,12 +87,12 @@ cases() ->
 %%-----------------------------------------------------------------
 
 init_per_testcase(_Case, Config) ->
-    ?line Dog=test_server:timetrap(?default_timeout),
+    Dog=test_server:timetrap(?default_timeout),
     [{watchdog, Dog}|Config].
 
 
 end_per_testcase(_Case, Config) ->
-    Dog = ?config(watchdog, Config),
+    Dog = proplists:get_value(watchdog, Config),
     test_server:timetrap_cancel(Dog),
     ok.
 
@@ -131,8 +131,7 @@ app_test(_Config) ->
 
 
 
-event_objects_api(doc) -> ["Testing the CosEvent API to setup a complete service", ""];
-event_objects_api(suite) -> [];
+%% Testing the CosEvent API to setup a complete service
 event_objects_api(_Config) ->
 
     Ch = ?match({_,key,_,_,_,_}, cosEventApp:start_channel([{typecheck, true},
@@ -234,8 +233,7 @@ event_objects_api(_Config) ->
 
     ok.
 
-events_api(doc) -> ["Testing the CosEvent API for sending events asynchronous", ""];
-events_api(suite) -> [];
+%% Testing the CosEvent API for sending events asynchronous
 events_api(_Config) ->
 
     Ch = ?match({_,key,_,_,_,_}, cosEventApp:start_channel([{typecheck, true},
@@ -244,8 +242,7 @@ events_api(_Config) ->
     event_sender(Ch).
 
 
-events_sync_api(doc) -> ["Testing the CosEvent API for sending events synchronous", ""];
-events_sync_api(suite) -> [];
+%% Testing the CosEvent API for sending events synchronous
 events_sync_api(_Config) ->
 
     Ch = ?match({_,key,_,_,_,_}, cosEventApp:start_channel([{typecheck, true},

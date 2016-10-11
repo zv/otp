@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2011-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2011-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -37,7 +37,8 @@
 -define(ID_UNREADABLE, 405).
 -define(ID_SYSTEM_TABLES, 406).
 -define(ID_TABLE_INFO, 407).
-
+-define(ID_SHOW_TABLE, 408).
+ 
 -record(opt, {type=ets,
 	      sys_hidden=true,
 	      unread_hidden=true,
@@ -49,6 +50,7 @@
 	{
 	  parent,
 	  grid,
+	  panel,
 	  node=node(),
 	  opt=#opt{},
 	  selected,
@@ -86,12 +88,13 @@ init([Notebook, Parent]) ->
     wxListItem:destroy(Li),
 
     wxListCtrl:connect(Grid, command_list_item_activated),
+    wxListCtrl:connect(Grid, command_list_item_right_click),
     wxListCtrl:connect(Grid, command_list_item_selected),
     wxListCtrl:connect(Grid, command_list_col_click),
     wxListCtrl:connect(Grid, size, [{skip, true}]),
 
     wxWindow:setFocus(Grid),
-    {Panel, #state{grid=Grid, parent=Parent, timer={false, 10}}}.
+    {Panel, #state{grid=Grid, parent=Parent, panel=Panel, timer={false, 10}}}.
 
 handle_event(#wx{id=?ID_REFRESH},
 	     State = #state{node=Node, grid=Grid, opt=Opt}) ->
@@ -121,6 +124,8 @@ handle_event(#wx{id=Id}, State = #state{node=Node, grid=Grid, opt=Opt0})
 	  end,
     case get_tables2(Node, Opt) of
 	Error = {error, _} ->
+            Id =:= ?ID_MNESIA andalso
+                wxMenuBar:check(observer_wx:get_menubar(), ?ID_ETS, true),
 	    self() ! Error,
 	    {noreply, State};
 	Tables ->
@@ -145,6 +150,16 @@ handle_event(#wx{event=#wxList{type=command_list_item_activated,
     end,
     {noreply, State};
 
+handle_event(#wx{event=#wxList{type=command_list_item_right_click}},
+	     State=#state{panel=Panel}) ->
+
+    Menu = wxMenu:new(),
+    wxMenu:append(Menu, ?ID_TABLE_INFO, "Table info"),
+    wxMenu:append(Menu, ?ID_SHOW_TABLE, "Show Table Content"),
+    wxWindow:popupMenu(Panel, Menu),
+    wxMenu:destroy(Menu),
+    {noreply, State};
+
 handle_event(#wx{event=#wxList{type=command_list_item_selected, itemIndex=Index}},
 	     State) ->
     {noreply, State#state{selected=Index}};
@@ -157,6 +172,22 @@ handle_event(#wx{id=?ID_TABLE_INFO},
 	R when is_integer(R) ->
 	    Table = lists:nth(Sel+1, Tabs),
 	    display_table_info(Grid, Node, Type, Table),
+	    {noreply, State}
+    end;
+
+handle_event(#wx{id=?ID_SHOW_TABLE},
+	     State=#state{grid=Grid, node=Node, opt=#opt{type=Type}, tabs=Tabs, selected=Sel}) ->
+    case Sel of
+	undefined ->
+	    {noreply, State};
+	R when is_integer(R) ->
+	    Table = lists:nth(Sel+1, Tabs),
+	    case Table#tab.protection of
+		private ->
+		    self() ! {error, "Table has 'private' protection and can not be read"};
+		_ ->
+		    observer_tv_table:start_link(Grid, [{node,Node}, {type,Type}, {table,Table}])
+	    end,
 	    {noreply, State}
     end;
 
@@ -188,22 +219,32 @@ handle_info(refresh_interval, State = #state{node=Node, grid=Grid, opt=Opt,
             {noreply, State#state{tabs=Tabs}}
     end;
 
-handle_info({active, Node}, State = #state{parent=Parent, grid=Grid, opt=Opt,
+handle_info({active, Node}, State = #state{parent=Parent, grid=Grid, opt=Opt0,
 					   timer=Timer0}) ->
-    Tables = get_tables(Node, Opt),
+    {Tables, Opt} = case Opt0#opt.type =:= mnesia andalso get_tables2(Node, Opt0) of
+                        Ts when is_list(Ts) ->
+                            {Ts, Opt0};
+                        _ -> % false or error getting mnesia tables
+                            Opt1 = Opt0#opt{type=ets},
+                            {get_tables(Node, Opt1), Opt1}
+                    end,
     Tabs = update_grid(Grid, Opt, Tables),
     wxWindow:setFocus(Grid),
     create_menus(Parent, Opt),
     Timer = observer_lib:start_timer(Timer0),
-    {noreply, State#state{node=Node, tabs=Tabs, timer=Timer}};
+    {noreply, State#state{node=Node, tabs=Tabs, timer=Timer, opt=Opt}};
 
 handle_info(not_active, State = #state{timer = Timer0}) ->
     Timer = observer_lib:stop_timer(Timer0),
     {noreply, State#state{timer=Timer}};
 
-handle_info({error, Error}, State) ->
+handle_info({error, Error}, #state{opt=Opt}=State) ->
     handle_error(Error),
-    {noreply, State};
+    case Opt#opt.type of
+        mnesia -> wxMenuBar:check(observer_wx:get_menubar(), ?ID_ETS, true);
+        _ -> ok
+    end,
+    {noreply, State#state{opt=Opt#opt{type=ets}}};
 
 handle_info(_Event, State) ->
     {noreply, State}.
@@ -315,6 +356,7 @@ display_table_info(Parent0, Node, Source, Table) ->
 
     {_, Sizer, _} = observer_lib:display_info(Frame, [IdInfo,Settings,Memory]),
     wxSizer:setSizeHints(Sizer, Frame),
+    wxWindow:setMinSize(Frame, {300, -1}),
     wxFrame:center(Frame),
     wxFrame:show(Frame).
 

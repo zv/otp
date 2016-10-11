@@ -11,7 +11,7 @@
 <header>
 <copyright>
 <year>2011</year>
-<year>2014</year>
+<year>2016</year>
 <holder>Ericsson AB. All Rights Reserved.</holder>
 </copyright>
 <legalnotice>
@@ -42,6 +42,66 @@ Releases are listed in reverse chronological order, most recent
 first.</p>
 
 <!-- ===================================================================== -->
+
+<section><title>diameter 1.12.1</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    Close diameter_tcp/sctp listening sockets at
+	    diameter:stop_service/1.</p>
+          <p>
+	    Broken by OTP-13611.</p>
+          <p>
+	    Own Id: OTP-13787 Aux Id: OTP-13611 </p>
+        </item>
+        <item>
+          <p>
+	    Update build scripts to not make assumtions about where
+	    env, cp and perl are located.</p>
+          <p>
+	    Own Id: OTP-13800</p>
+        </item>
+      </list>
+    </section>
+
+</section>
+
+<section><title>diameter 1.12</title>
+
+    <section><title>Fixed Bugs and Malfunctions</title>
+      <list>
+        <item>
+          <p>
+	    Ensure listening socket is closed at transport removal.</p>
+          <p>
+	    Transport removal did not immediately close a
+	    <c>diameter_tcp/sctp</c> listening socket, and a
+	    subsequent peer connection caused it to remain open.</p>
+          <p>
+	    Own Id: OTP-13611</p>
+        </item>
+      </list>
+    </section>
+
+
+    <section><title>Improvements and New Features</title>
+      <list>
+        <item>
+          <p>
+	    Add <c>diameter:peer_info/1</c>.</p>
+          <p>
+	    That retrieves information in the style of
+	    <c>diameter:service_info/2</c>, but for a single peer
+	    connection.</p>
+          <p>
+	    Own Id: OTP-13508</p>
+        </item>
+      </list>
+    </section>
+
+</section>
 
 <section><title>diameter 1.11.2</title>
 

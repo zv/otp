@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2000-2014. All Rights Reserved.
+ * Copyright Ericsson AB 2000-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1342,7 +1342,8 @@ static int send_name_or_challenge(int fd, char *nodename,
                 | DFLAG_NEW_FLOATS
 		| DFLAG_SMALL_ATOM_TAGS
 		| DFLAG_UTF8_ATOMS
-		| DFLAG_MAP_TAG));
+		| DFLAG_MAP_TAG
+		| DFLAG_BIG_CREATION));
     if (f_chall)
 	put32be(s, challenge);
     memcpy(s, nodename, strlen(nodename));
@@ -1707,28 +1708,36 @@ error:
 
 static int get_home(char *buf, int size)
 {
-    char* homedrive;
-    char* homepath;
-    
 #ifdef __WIN32__
-    homedrive = getenv("HOMEDRIVE");
-    homepath = getenv("HOMEPATH");
-#else
-    homedrive = "";
-    homepath = getenv("HOME");
-#endif
+    char* homedrive = getenv("HOMEDRIVE");
+    char* homepath = getenv("HOMEPATH");
     
-    if (!homedrive || !homepath) {
-	buf[0] = '.';
-	buf[1] = '\0';
-	return 1;
-    } else if (strlen(homedrive)+strlen(homepath) < size-1) {
+    if (homedrive && homepath) {
+	if (strlen(homedrive)+strlen(homepath) >= size)
+	    return 0;
 	strcpy(buf, homedrive);
 	strcat(buf, homepath);
 	return 1;
     }
-    
-    return 0;
+    else {
+	int len = GetWindowsDirectory(buf, size);
+	if (len) {
+	    return (len < size);
+	}
+    }
+#else
+    char* homepath = getenv("HOME");
+    if (homepath) {
+	if (strlen(homepath) >= size)
+	    return 0;
+	strcpy(buf, homepath);
+	return 1;
+    }
+#endif
+
+    buf[0] = '.';
+    buf[1] = '\0';
+    return 1;
 }
 
 

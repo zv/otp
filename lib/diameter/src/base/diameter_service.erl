@@ -32,6 +32,7 @@
 -export([subscribe/1,
          unsubscribe/1,
          services/0,
+         peer_info/1,
          info/2]).
 
 %% towards diameter_config
@@ -128,14 +129,14 @@
 %% Record representing an RFC 3539 watchdog process implemented by
 %% diameter_watchdog.
 -record(watchdog,
-        {pid  :: match(pid()),
+        {pid  :: match(pid()) | undefined,
          type :: match(connect | accept),
          ref  :: match(reference()),  %% key into diameter_config
          options :: match([diameter:transport_opt()]),%% from start_transport
          state = ?WD_INITIAL :: match(wd_state()),
          started = diameter_lib:now(),%% at process start
          peer = false :: match(boolean() | pid())}).
-                      %% true at accepted, pid() at okay/reopen
+                      %% true at accepted/remove, pid() at okay/reopen
 
 %% Record representing a Peer State Machine processes implemented by
 %% diameter_peer_fsm.
@@ -218,6 +219,29 @@ lookup_state(SvcName) ->
     end.
 
 %% ---------------------------------------------------------------------------
+%% # peer_info/2
+%% ---------------------------------------------------------------------------
+
+%% An extended version of info_peer/1 for peer_info/1.
+peer_info(Pid) ->
+    try
+        {_, PD} = process_info(Pid, dictionary),
+        {_, T} = lists:keyfind({diameter_peer_fsm, start}, 1, PD),
+        {TPid, {{Type, Ref}, TMod, Cfg}} = T,
+        {_, TD} = process_info(TPid, dictionary),
+        {_, Data} = lists:keyfind({TMod, info}, 1, TD),
+        [{ref, Ref},
+         {type, Type},
+         {owner, TPid},
+         {module, TMod},
+         {config, Cfg}
+         | try TMod:info(Data) catch _:_ -> [] end]
+    catch
+        error:_ ->
+            []
+    end.
+
+%% ---------------------------------------------------------------------------
 %% # subscribe/1
 %% # unsubscribe/1
 %% ---------------------------------------------------------------------------
@@ -226,7 +250,7 @@ subscribe(SvcName) ->
     diameter_reg:add({?MODULE, subscriber, SvcName}).
 
 unsubscribe(SvcName) ->
-    diameter_reg:del({?MODULE, subscriber, SvcName}).
+    diameter_reg:remove({?MODULE, subscriber, SvcName}).
 
 subscriptions(Pat) ->
     pmap(diameter_reg:match({?MODULE, subscriber, Pat})).
@@ -652,25 +676,34 @@ mod_state(Alias, ModS) ->
 %% remove_transport
 shutdown(Refs, #state{watchdogT = WatchdogT})
   when is_list(Refs) ->
-    ets:foldl(fun(P,ok) -> st(P, Refs), ok end, ok, WatchdogT);
+    ets:insert(WatchdogT, ets:foldl(fun(R,A) -> st(R, Refs, A) end,
+                                    [],
+                                    WatchdogT));
 
 %% application/service shutdown
 shutdown(Reason, #state{watchdogT = WatchdogT})
   when Reason == application;
        Reason == service ->
-    diameter_lib:wait(ets:foldl(fun(P,A) -> st(P, Reason, A) end,
+    diameter_lib:wait(ets:foldl(fun(P,A) -> ss(P, Reason, A) end,
                                 [],
                                 WatchdogT)).
 
-%% st/2
-
-st(#watchdog{ref = Ref, pid = Pid}, Refs) ->
-    lists:member(Ref, Refs)
-        andalso (Pid ! {shutdown, self(), transport}).  %% 'DOWN' cleans up
-
 %% st/3
 
-st(#watchdog{pid = Pid}, Reason, Acc) ->
+%% Mark replacement as started so that a subsequent accept doesn't
+%% result in a new process that isn't terminated.
+st(#watchdog{ref = Ref, pid = Pid, peer = P} = Rec, Refs, Acc) ->
+    case lists:member(Ref, Refs) of
+        true ->
+            Pid ! {shutdown, self(), transport},  %% 'DOWN' cleans up
+            [Rec#watchdog{peer = true} || P == false] ++ Acc;
+        false ->
+            Acc
+    end.
+
+%% ss/3
+
+ss(#watchdog{pid = Pid}, Reason, Acc) ->
     MRef = monitor(process, Pid),
     Pid ! {shutdown, self(), Reason},
     [MRef | Acc].
@@ -950,11 +983,22 @@ ms(_, Svc) ->
 %% ---------------------------------------------------------------------------
 
 accepted(Pid, _TPid, #state{watchdogT = WatchdogT} = S) ->
-    #watchdog{ref = Ref, type = accept = T, peer = false, options = Opts}
+    #watchdog{type = accept = T, peer = P}
         = Wd
         = fetch(WatchdogT, Pid),
-    ets:insert(WatchdogT, Wd#watchdog{peer = true}),%% mark replacement started
-    start(Ref, T, Opts, S).                         %% start new watchdog
+    if not P ->
+            #watchdog{ref = Ref, options = Opts} = Wd,
+            %% Mark replacement started, and start new watchdog.
+            ets:insert(WatchdogT, Wd#watchdog{peer = true}),
+            start(Ref, T, Opts, S);
+       P ->
+            %% Transport removal in progress: true has been set in
+            %% shutdown/2, and the transport will die as a
+            %% consequence.
+            ok
+    end.
+
+%% fetch/2
 
 fetch(Tid, Key) ->
     [T] = ets:lookup(Tid, Key),
@@ -1293,8 +1337,7 @@ start_tc(Tc, T, _) ->
 tc_timeout({Ref, _Type, _Opts} = T, #state{service_name = SvcName} = S) ->
     tc(diameter_config:have_transport(SvcName, Ref), T, S).
 
-tc(true, {Ref, Type, Opts}, #state{service_name = SvcName}
-                            = S) ->
+tc(true, {Ref, Type, Opts}, #state{service_name = SvcName} = S) ->
     send_event(SvcName, {reconnect, Ref, Opts}),
     start(Ref, Type, Opts, S);
 tc(false = No, _, _) ->  %% removed

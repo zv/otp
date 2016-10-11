@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2005-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2005-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -47,6 +47,21 @@
 %%====================================================================
 %% ssh_channel callbacks
 %%====================================================================
+-spec init(Args :: term()) ->
+    {ok, State :: term()} | {ok, State :: term(), timeout() | hibernate} |
+    {stop, Reason :: term()} | ignore.
+
+-spec terminate(Reason :: (normal | shutdown | {shutdown, term()} |
+                               term()),
+                    State :: term()) ->
+    term().
+
+-spec handle_msg(Msg ::term(), State :: term()) ->
+    {ok, State::term()} | {stop, ChannelId::integer(), State::term()}. 
+-spec handle_ssh_msg({ssh_cm, ConnectionRef::term(), SshMsg::term()},
+			 State::term()) -> {ok, State::term()} |
+					   {stop, ChannelId::integer(),
+					    State::term()}.
 
 %%--------------------------------------------------------------------
 %% Function: init(Args) -> {ok, State} 
@@ -193,8 +208,15 @@ handle_msg({Group, Req}, #state{group = Group, buf = Buf, pty = Pty,
     write_chars(ConnectionHandler, ChannelId, Chars),
     {ok, State#state{buf = NewBuf}};
 
-handle_msg({'EXIT', Group, _Reason}, #state{group = Group,
-					     channel = ChannelId} = State) ->
+handle_msg({'EXIT', Group, Reason}, #state{group = Group,
+					    cm = ConnectionHandler,
+					    channel = ChannelId} = State) ->
+    Status = case Reason of
+                 normal -> 0;
+                 _      -> -1
+             end,
+    ssh_connection:exit_status(ConnectionHandler, ChannelId, Status),
+    ssh_connection:send_eof(ConnectionHandler, ChannelId),
     {stop, ChannelId, State};
 
 handle_msg(_, State) ->

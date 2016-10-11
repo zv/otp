@@ -43,10 +43,10 @@ init_per_suite(Config0) ->
     catch crypto:stop(),
     try crypto:start() of
 	ok ->
-	    ssl:start(),
+	    ssl_test_lib:clean_start(),
 	    %% make rsa certs using oppenssl
-	    {ok, _} =  make_certs:all(?config(data_dir, Config0),
-				      ?config(priv_dir, Config0)),
+	    {ok, _} =  make_certs:all(proplists:get_value(data_dir, Config0),
+				      proplists:get_value(priv_dir, Config0)),
 	    Config1 = ssl_test_lib:make_dsa_cert(Config0),
 	    ssl_test_lib:cert_options(Config1)
     catch _:_ ->
@@ -63,14 +63,15 @@ end_per_group(_GroupName, Config) ->
     Config.
 
 init_per_testcase(pem_cleanup = Case, Config) ->
-    end_per_testcase(Case, Config) ,
     application:load(ssl),
+    end_per_testcase(Case, Config) ,
     application:set_env(ssl, ssl_pem_cache_clean, ?CLEANUP_INTERVAL),
     ssl:start(),
     ct:timetrap({minutes, 1}),
     Config.
 
 end_per_testcase(_TestCase, Config) ->
+    ssl_test_lib:clean_env(),
     ssl:stop(),
     Config.
 
@@ -81,8 +82,8 @@ pem_cleanup() ->
     [{doc, "Test pem cache invalidate mechanism"}].
 pem_cleanup(Config)when is_list(Config) ->
     process_flag(trap_exit, true),
-    ClientOpts = ?config(client_opts, Config),
-    ServerOpts = ?config(server_opts, Config),
+    ClientOpts = proplists:get_value(client_opts, Config),
+    ServerOpts = proplists:get_value(server_opts, Config),
     {ClientNode, ServerNode, Hostname} = ssl_test_lib:run_where(Config),
 
     Server =

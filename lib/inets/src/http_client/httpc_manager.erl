@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2002-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2002-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -137,7 +137,7 @@ redirect_request(Request, ProfileName) ->
 
 %%--------------------------------------------------------------------
 %% Function: cancel_request(RequestId, ProfileName) -> ok
-%%	RequestId - ref()
+%%	RequestId - reference()
 %%      ProfileName = atom()
 %%
 %% Description: Cancels the request with <RequestId>.
@@ -148,7 +148,7 @@ cancel_request(RequestId, ProfileName) ->
 
 %%--------------------------------------------------------------------
 %% Function: request_done(RequestId, ProfileName) -> ok
-%%	RequestId - ref()
+%%	RequestId - reference()
 %%      ProfileName = atom()
 %%
 %% Description: Inform tha manager that a request has been completed.

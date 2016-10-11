@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1998-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1998-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -325,7 +325,7 @@ restore(Config, Op)  ->
     end,
     ?match(ok, file:delete(File1)),
     ?match(ok, file:delete(File2)),
-    ?match([], Check() -- Before),
+    ?match([], Check() -- (Before ++ [{ok, latest_log}, {ok, previous_log}])),
 
     ?verify_mnesia(Nodes, []).
 

@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  * 
- * Copyright Ericsson AB 1997-2009. All Rights Reserved.
+ * Copyright Ericsson AB 1997-2016. All Rights Reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -247,6 +247,12 @@ BIF_RETTYPE math_pow_2(BIF_ALIST_2)
     return math_call_2(BIF_P, pow, BIF_ARG_1, BIF_ARG_2);
 }
 
+BIF_RETTYPE math_ceil_1(BIF_ALIST_1)
+{
+    return math_call_1(BIF_P, ceil, BIF_ARG_1);
+}
 
-
-
+BIF_RETTYPE math_floor_1(BIF_ALIST_1)
+{
+    return math_call_1(BIF_P, floor, BIF_ARG_1);
+}

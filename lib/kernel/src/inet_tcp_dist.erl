@@ -24,13 +24,16 @@
 -export([listen/1, accept/1, accept_connection/5,
 	 setup/5, close/1, select/1, is_node_name/1]).
 
+%% Optional
+-export([setopts/2, getopts/2]).
+
 %% Generalized dist API
 -export([gen_listen/2, gen_accept/2, gen_accept_connection/6,
 	 gen_setup/6, gen_select/2]).
 
 %% internal exports
 
--export([accept_loop/3,do_accept/7,do_setup/7,getstat/1]).
+-export([accept_loop/3,do_accept/7,do_setup/7,getstat/1,tick/2]).
 
 -import(error_logger,[error_msg/2]).
 
@@ -73,7 +76,8 @@ gen_listen(Driver, Name) ->
 	{ok, Socket} ->
 	    TcpAddress = get_tcp_address(Driver, Socket),
 	    {_,Port} = TcpAddress#net_address.address,
-	    case erl_epmd:register_node(Name, Port) of
+	    ErlEpmd = net_kernel:epmd_module(),
+	    case ErlEpmd:register_node(Name, Port, Driver) of
 		{ok, Creation} ->
 		    {ok, {Socket, TcpAddress, Creation}};
 		Error ->
@@ -214,8 +218,10 @@ do_accept(Driver, Kernel, AcceptPid, Socket, MyNode, Allowed, SetupTime) ->
 					inet:getll(S)
 				end,
 		      f_address = fun(S, Node) -> get_remote_id(Driver, S, Node) end,
-		      mf_tick = fun(S) -> tick(Driver, S) end,
-		      mf_getstat = fun ?MODULE:getstat/1
+		      mf_tick = fun(S) -> ?MODULE:tick(Driver, S) end,
+		      mf_getstat = fun ?MODULE:getstat/1,
+		      mf_setopts = fun ?MODULE:setopts/2,
+		      mf_getopts = fun ?MODULE:getopts/2
 		     },
 		    dist_util:handshake_other_started(HSData);
 		{false,IP} ->
@@ -280,7 +286,8 @@ do_setup(Driver, Kernel, Node, Type, MyNode, LongOrShortNames, SetupTime) ->
     case inet:getaddr(Address, AddressFamily) of
 	{ok, Ip} ->
 	    Timer = dist_util:start_timer(SetupTime),
-	    case erl_epmd:port_please(Name, Ip) of
+	    ErlEpmd = net_kernel:epmd_module(),
+	    case ErlEpmd:port_please(Name, Ip) of
 		{port, TcpPort, Version} ->
 		    ?trace("port_please(~p) -> version ~p~n", 
 			   [Node,Version]),
@@ -318,6 +325,7 @@ do_setup(Driver, Kernel, Node, Type, MyNode, LongOrShortNames, SetupTime) ->
 					  {packet, 4},
 					  nodelay()])
 			      end,
+
 			      f_getll = fun inet:getll/1,
 			      f_address = 
 			      fun(_,_) ->
@@ -327,9 +335,11 @@ do_setup(Driver, Kernel, Node, Type, MyNode, LongOrShortNames, SetupTime) ->
 				   protocol = tcp,
 				   family = AddressFamily}
 			      end,
-			      mf_tick = fun(S) -> tick(Driver, S) end,
+			      mf_tick = fun(S) -> ?MODULE:tick(Driver, S) end,
 			      mf_getstat = fun ?MODULE:getstat/1,
-			      request_type = Type
+			      request_type = Type,
+			      mf_setopts = fun ?MODULE:setopts/2,
+			      mf_getopts = fun ?MODULE:getopts/2
 			     },
 			    dist_util:handshake_we_started(HSData);
 			_ ->
@@ -490,3 +500,12 @@ split_stat([], R, W, P) ->
     {ok, R, W, P}.
 
 
+setopts(S, Opts) ->
+    case [Opt || {K,_}=Opt <- Opts,
+		 K =:= active orelse K =:= deliver orelse K =:= packet] of
+	[] -> inet:setopts(S,Opts);
+	Opts1 -> {error, {badopts,Opts1}}
+    end.
+
+getopts(S, Opts) ->
+    inet:getopts(S, Opts).

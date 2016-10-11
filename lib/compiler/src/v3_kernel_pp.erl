@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1999-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1999-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -278,6 +278,15 @@ format_1(#k_try_enter{arg=A,vars=Vs,body=B,evars=Evs,handler=H}, Ctxt) ->
      format(H, Ctxt1),
      nl_indent(Ctxt),
      "end"
+    ];
+format_1(#k_protected{arg=A,ret=Rs}, Ctxt) ->
+    Ctxt1 = ctxt_bump_indent(Ctxt, Ctxt#ctxt.body_indent),
+    ["protected",
+     nl_indent(Ctxt1),
+     format(A, Ctxt1),
+     nl_indent(Ctxt),
+     "end",
+     format_ret(Rs, ctxt_bump_indent(Ctxt, 1))
     ];
 format_1(#k_catch{body=B,ret=Rs}, Ctxt) ->
     Ctxt1 = ctxt_bump_indent(Ctxt, Ctxt#ctxt.body_indent),

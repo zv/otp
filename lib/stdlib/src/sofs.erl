@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2001-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -621,6 +621,9 @@ canonical_relation(Sets) when ?IS_SET(Sets) ->
 %%% Functions on binary relations only.
 %%%
 
+-spec(rel2fam(BinRel) -> Family when
+      Family :: family(),
+      BinRel :: binary_relation()).
 rel2fam(R) ->
     relation_to_family(R).
 

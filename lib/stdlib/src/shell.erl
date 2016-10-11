@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1996-2015. All Rights Reserved.
+%% Copyright Ericsson AB 1996-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -768,6 +768,8 @@ used_records({call,_,{atom,_,record_info},[A,{atom,_,Name}]}) ->
     {name, Name, A};
 used_records({call,Line,{tuple,_,[M,F]},As}) ->
     used_records({call,Line,{remote,Line,M,F},As});
+used_records({type,_,record,[{atom,_,Name}|Fs]}) ->
+  {name, Name, Fs};
 used_records(T) when is_tuple(T) ->
     {expr, tuple_to_list(T)};
 used_records(E) ->
@@ -917,9 +919,9 @@ expand_records(UsedRecords, E0) ->
     RecordDefs = [Def || {_Name,Def} <- UsedRecords],
     L = erl_anno:new(1),
     E = prep_rec(E0),
-    Forms = RecordDefs ++ [{function,L,foo,0,[{clause,L,[],[],[E]}]}],
-    [{function,L,foo,0,[{clause,L,[],[],[NE]}]}] = 
-        erl_expand_records:module(Forms, [strict_record_tests]), 
+    Forms0 = RecordDefs ++ [{function,L,foo,0,[{clause,L,[],[],[E]}]}],
+    Forms = erl_expand_records:module(Forms0, [strict_record_tests]),
+    {function,L,foo,0,[{clause,L,[],[],[NE]}]} = lists:last(Forms),
     prep_rec(NE).
 
 prep_rec({value,_CommandN,_V}=Value) ->
@@ -1081,6 +1083,8 @@ record_fields([{record_field,_,{atom,_,Field}} | Fs]) ->
     [Field | record_fields(Fs)];
 record_fields([{record_field,_,{atom,_,Field},_} | Fs]) ->
     [Field | record_fields(Fs)];
+record_fields([{typed_record_field,Field,_Type} | Fs]) ->
+    record_fields([Field | Fs]);
 record_fields([]) ->
     [].
 

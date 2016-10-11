@@ -1,7 +1,7 @@
 #
 # %CopyrightBegin%
 #
-# Copyright Ericsson AB 1999-2013. All Rights Reserved.
+# Copyright Ericsson AB 1999-2016. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ RELSYSDIR = "$(RELEASE_PATH)/doc"
 
 GIF_FILES = 
 
-INFO_FILES = ../../README ../../COPYRIGHT PR.template
+INFO_FILES = ../../../README.md ../../COPYRIGHT PR.template
 
 TOPDOCDIR=.
 
@@ -74,6 +74,7 @@ XML_FILES = \
 
 BOOK_FILES = book.xml
 
+XMLLINT_SRCDIRS= ../installation_guide:../system_principles:../embedded:../getting_started:../reference_manual:../programming_examples:../efficiency_guide:../tutorial:../design_principles:../oam
 HTMLDIR= ../html
 PDFREFDIR= pdf
 
@@ -120,10 +121,11 @@ $(HTMLDIR)/index.html + $(HTMLDIR)/applications.html: $(INDEX_SCRIPT) $(TEMPLATE
 # Check if we are building the index from source or an installed release
 	if test "$$RELEASE_ROOT" = "" ; then \
 		$(ERL) -noshell -pa $(EBIN) -s erl_html_tools top_index src $(ERL_TOP) \
-		$(HTMLDIR) $(SYSTEM_VSN) -s erlang halt ;\
+		$(HTMLDIR) `cat "$(ERL_TOP)/OTP_VERSION"` -s erlang halt ;\
 	else \
 		$(ERL) -noshell -pa $(EBIN) -s erl_html_tools top_index rel $(RELEASE_ROOT) \
-		$(HTMLDIR) $(SYSTEM_VSN) -s erlang halt ;\
+		$(HTMLDIR) `cat "$(RELEASE_ROOT)/releases/$(SYSTEM_VSN)/OTP_VERSION"` \
+		-s erlang halt ;\
 	fi
 
 

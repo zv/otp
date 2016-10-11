@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  * 
- * Copyright Ericsson AB 2001-2012. All Rights Reserved.
+ * Copyright Ericsson AB 2001-2016. All Rights Reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -525,6 +525,12 @@ static const struct rts_param rts_params[] = {
     { 51, "P_CALLEE_EXP", 1, offsetof(struct process, hipe.u.callee_exp) },
 
     { 52, "THE_NON_VALUE", 1, (int)THE_NON_VALUE },
+
+    { 53, "P_GCUNSAFE",
+#ifdef DEBUG
+      1, offsetof(struct process, hipe.gc_is_unsafe)
+#endif
+    },
 };
 
 #define NR_PARAMS	ARRAY_SIZE(rts_params)

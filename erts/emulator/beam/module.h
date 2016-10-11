@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 1996-2013. All Rights Reserved.
+ * Copyright Ericsson AB 1996-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@
 #ifndef __MODULE_H__
 #define __MODULE_H__
 
-#ifndef __INDEX_H__
 #include "index.h"
-#endif
 
 struct erl_module_instance {
-    BeamInstr* code;
+    BeamCodeHeader* code_hdr;
     int code_length;		/* Length of loaded code in bytes. */
     unsigned catches;
     struct erl_module_nif* nif;
@@ -37,9 +35,11 @@ struct erl_module_instance {
 typedef struct erl_module {
     IndexSlot slot;		/* Must be located at top of struct! */
     int module;			/* Atom index for module (not tagged). */
+    int seen;			/* Used by finish_loading() */
 
     struct erl_module_instance curr;
     struct erl_module_instance old; /* protected by "old_code" rwlock */
+    struct erl_module_instance* on_load;
 } Module; 
 
 Module* erts_get_module(Eterm mod, ErtsCodeIndex code_ix);

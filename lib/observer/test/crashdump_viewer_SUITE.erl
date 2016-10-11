@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2003-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2003-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 -export([init_per_testcase/2, end_per_testcase/2]).
 
 -include_lib("common_test/include/ct.hrl").
--include("test_server_line.hrl").
 -include_lib("kernel/include/file.hrl").
 
 -define(failed_file,"failed-cases.txt").
@@ -102,7 +101,10 @@ end_per_group(_GroupName, Config) ->
 init_per_suite(Config) when is_list(Config) ->
     delete_saved(Config),
     DataDir = ?config(data_dir,Config),
-    Rels = [R || R <- [r16b,'17'], ?t:is_release_available(R)] ++ [current],
+    CurrVsn = list_to_integer(erlang:system_info(otp_release)),
+    OldRels = [R || R <- [CurrVsn-2,CurrVsn-1],
+		    ?t:is_release_available(list_to_atom(integer_to_list(R)))],
+    Rels = OldRels ++ [current],
     io:format("Creating crash dumps for the following releases: ~p", [Rels]),
     AllDumps = create_dumps(DataDir,Rels),
     [{dumps,AllDumps}|Config].
@@ -605,23 +607,17 @@ dos_dump(DataDir,Rel,Dump) ->
 	    []
     end.
 
+rel_opt(current) ->
+    [];
 rel_opt(Rel) ->
-    case Rel of
-	r16b -> [{erl,[{release,"r16b_latest"}]}];
-	'17' -> [{erl,[{release,"17_latest"}]}];
-	current -> []
-    end.
+    [{erl,[{release,lists:concat([Rel,"_latest"])}]}].
 
+dump_prefix(current) ->
+    dump_prefix(erlang:system_info(otp_release));
 dump_prefix(Rel) ->
-    case Rel of
-	r16b -> "r16b_dump.";
-	'17' -> "r17_dump.";
-	current -> "r18_dump."
-    end.
+    lists:concat(["r",Rel,"_dump."]).
 
+compat_rel(current) ->
+    "";
 compat_rel(Rel) ->
-    case Rel of
-	r16b -> "+R16 ";
-	'17' -> "+R17 ";
-	current -> ""
-    end.
+    lists:concat(["+R",Rel," "]).

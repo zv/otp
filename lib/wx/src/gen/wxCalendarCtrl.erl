@@ -43,29 +43,29 @@
   centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
   close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
-  enable/1,enable/2,findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,
-  getBackgroundColour/1,getBackgroundStyle/1,getBestSize/1,getCaret/1,
-  getCharHeight/1,getCharWidth/1,getChildren/1,getClientSize/1,getContainingSizer/1,
-  getCursor/1,getDropTarget/1,getEventHandler/1,getExtraStyle/1,getFont/1,
-  getForegroundColour/1,getGrandParent/1,getHandle/1,getHelpText/1,
-  getId/1,getLabel/1,getMaxSize/1,getMinSize/1,getName/1,getParent/1,
-  getPosition/1,getRect/1,getScreenPosition/1,getScreenRect/1,getScrollPos/2,
-  getScrollRange/2,getScrollThumb/2,getSize/1,getSizer/1,getTextExtent/2,
-  getTextExtent/3,getToolTip/1,getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,
-  getWindowVariant/1,hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,
-  hide/1,inheritAttributes/1,initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,
-  isEnabled/1,isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,
-  isTopLevel/1,layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,
-  move/2,move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,
-  navigate/1,navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,
-  popEventHandler/2,popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,
-  refresh/2,refreshRect/2,refreshRect/3,releaseMouse/1,removeChild/2,
-  reparent/2,screenToClient/1,screenToClient/2,scrollLines/2,scrollPages/2,
-  scrollWindow/3,scrollWindow/4,setAcceleratorTable/2,setAutoLayout/2,
-  setBackgroundColour/2,setBackgroundStyle/2,setCaret/2,setClientSize/2,
-  setClientSize/3,setContainingSizer/2,setCursor/2,setDoubleBuffered/2,
-  setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,setFont/2,
-  setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
+  dragAcceptFiles/2,enable/1,enable/2,findWindow/2,fit/1,fitInside/1,
+  freeze/1,getAcceleratorTable/1,getBackgroundColour/1,getBackgroundStyle/1,
+  getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,getChildren/1,
+  getClientSize/1,getContainingSizer/1,getCursor/1,getDropTarget/1,
+  getEventHandler/1,getExtraStyle/1,getFont/1,getForegroundColour/1,
+  getGrandParent/1,getHandle/1,getHelpText/1,getId/1,getLabel/1,getMaxSize/1,
+  getMinSize/1,getName/1,getParent/1,getPosition/1,getRect/1,getScreenPosition/1,
+  getScreenRect/1,getScrollPos/2,getScrollRange/2,getScrollThumb/2,
+  getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,getToolTip/1,
+  getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,getWindowVariant/1,
+  hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,hide/1,inheritAttributes/1,
+  initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,isEnabled/1,
+  isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,isTopLevel/1,
+  layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,
+  move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,navigate/1,
+  navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,popEventHandler/2,
+  popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,refresh/2,refreshRect/2,
+  refreshRect/3,releaseMouse/1,removeChild/2,reparent/2,screenToClient/1,
+  screenToClient/2,scrollLines/2,scrollPages/2,scrollWindow/3,scrollWindow/4,
+  setAcceleratorTable/2,setAutoLayout/2,setBackgroundColour/2,setBackgroundStyle/2,
+  setCaret/2,setClientSize/2,setClientSize/3,setContainingSizer/2,setCursor/2,
+  setDoubleBuffered/2,setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,
+  setFont/2,setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
   setMinSize/2,setName/2,setOwnBackgroundColour/2,setOwnFont/2,setOwnForegroundColour/2,
   setPalette/2,setScrollPos/3,setScrollPos/4,setScrollbar/5,setScrollbar/6,
   setSize/2,setSize/3,setSize/5,setSize/6,setSizeHints/2,setSizeHints/3,
@@ -103,10 +103,10 @@ new(Parent,Id)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlwxcalendarctrl">external documentation</a>.
 -spec new(Parent, Id, [Option]) -> wxCalendarCtrl() when
 	Parent::wxWindow:wxWindow(), Id::integer(),
-	Option :: {date, wx:wx_datetime()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}.
+	Option :: {'date', wx:wx_datetime()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}.
 new(#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
  when is_integer(Id),is_list(Options) ->
   ?CLASS(ParentT,wxWindow),
@@ -130,10 +130,10 @@ create(This,Parent,Id)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlcreate">external documentation</a>.
 -spec create(This, Parent, Id, [Option]) -> boolean() when
 	This::wxCalendarCtrl(), Parent::wxWindow:wxWindow(), Id::integer(),
-	Option :: {date, wx:wx_datetime()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}.
+	Option :: {'date', wx:wx_datetime()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}.
 create(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
  when is_integer(Id),is_list(Options) ->
   ?CLASS(ThisT,wxCalendarCtrl),
@@ -165,7 +165,7 @@ getDate(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @equiv enableYearChange(This, [])
--spec enableYearChange(This) -> ok when
+-spec enableYearChange(This) -> 'ok' when
 	This::wxCalendarCtrl().
 
 enableYearChange(This)
@@ -173,9 +173,9 @@ enableYearChange(This)
   enableYearChange(This, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlenableyearchange">external documentation</a>.
--spec enableYearChange(This, [Option]) -> ok when
+-spec enableYearChange(This, [Option]) -> 'ok' when
 	This::wxCalendarCtrl(),
-	Option :: {enable, boolean()}.
+	Option :: {'enable', boolean()}.
 enableYearChange(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxCalendarCtrl),
@@ -186,7 +186,7 @@ enableYearChange(#wx_ref{type=ThisT,ref=ThisRef}, Options)
   <<ThisRef:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @equiv enableMonthChange(This, [])
--spec enableMonthChange(This) -> ok when
+-spec enableMonthChange(This) -> 'ok' when
 	This::wxCalendarCtrl().
 
 enableMonthChange(This)
@@ -194,9 +194,9 @@ enableMonthChange(This)
   enableMonthChange(This, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlenablemonthchange">external documentation</a>.
--spec enableMonthChange(This, [Option]) -> ok when
+-spec enableMonthChange(This, [Option]) -> 'ok' when
 	This::wxCalendarCtrl(),
-	Option :: {enable, boolean()}.
+	Option :: {'enable', boolean()}.
 enableMonthChange(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxCalendarCtrl),
@@ -207,7 +207,7 @@ enableMonthChange(#wx_ref{type=ThisT,ref=ThisRef}, Options)
   <<ThisRef:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @equiv enableHolidayDisplay(This, [])
--spec enableHolidayDisplay(This) -> ok when
+-spec enableHolidayDisplay(This) -> 'ok' when
 	This::wxCalendarCtrl().
 
 enableHolidayDisplay(This)
@@ -215,9 +215,9 @@ enableHolidayDisplay(This)
   enableHolidayDisplay(This, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlenableholidaydisplay">external documentation</a>.
--spec enableHolidayDisplay(This, [Option]) -> ok when
+-spec enableHolidayDisplay(This, [Option]) -> 'ok' when
 	This::wxCalendarCtrl(),
-	Option :: {display, boolean()}.
+	Option :: {'display', boolean()}.
 enableHolidayDisplay(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxCalendarCtrl),
@@ -228,7 +228,7 @@ enableHolidayDisplay(#wx_ref{type=ThisT,ref=ThisRef}, Options)
   <<ThisRef:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlsetheadercolours">external documentation</a>.
--spec setHeaderColours(This, ColFg, ColBg) -> ok when
+-spec setHeaderColours(This, ColFg, ColBg) -> 'ok' when
 	This::wxCalendarCtrl(), ColFg::wx:wx_colour(), ColBg::wx:wx_colour().
 setHeaderColours(#wx_ref{type=ThisT,ref=ThisRef},ColFg,ColBg)
  when tuple_size(ColFg) =:= 3; tuple_size(ColFg) =:= 4,tuple_size(ColBg) =:= 3; tuple_size(ColBg) =:= 4 ->
@@ -253,7 +253,7 @@ getHeaderColourBg(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlsethighlightcolours">external documentation</a>.
--spec setHighlightColours(This, ColFg, ColBg) -> ok when
+-spec setHighlightColours(This, ColFg, ColBg) -> 'ok' when
 	This::wxCalendarCtrl(), ColFg::wx:wx_colour(), ColBg::wx:wx_colour().
 setHighlightColours(#wx_ref{type=ThisT,ref=ThisRef},ColFg,ColBg)
  when tuple_size(ColFg) =:= 3; tuple_size(ColFg) =:= 4,tuple_size(ColBg) =:= 3; tuple_size(ColBg) =:= 4 ->
@@ -278,7 +278,7 @@ getHighlightColourBg(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlsetholidaycolours">external documentation</a>.
--spec setHolidayColours(This, ColFg, ColBg) -> ok when
+-spec setHolidayColours(This, ColFg, ColBg) -> 'ok' when
 	This::wxCalendarCtrl(), ColFg::wx:wx_colour(), ColBg::wx:wx_colour().
 setHolidayColours(#wx_ref{type=ThisT,ref=ThisRef},ColFg,ColBg)
  when tuple_size(ColFg) =:= 3; tuple_size(ColFg) =:= 4,tuple_size(ColBg) =:= 3; tuple_size(ColBg) =:= 4 ->
@@ -312,7 +312,7 @@ getAttr(#wx_ref{type=ThisT,ref=ThisRef},Day)
   <<ThisRef:32/?UI,Day:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlsetattr">external documentation</a>.
--spec setAttr(This, Day, Attr) -> ok when
+-spec setAttr(This, Day, Attr) -> 'ok' when
 	This::wxCalendarCtrl(), Day::integer(), Attr::wxCalendarDateAttr:wxCalendarDateAttr().
 setAttr(#wx_ref{type=ThisT,ref=ThisRef},Day,#wx_ref{type=AttrT,ref=AttrRef})
  when is_integer(Day) ->
@@ -322,7 +322,7 @@ setAttr(#wx_ref{type=ThisT,ref=ThisRef},Day,#wx_ref{type=AttrT,ref=AttrRef})
   <<ThisRef:32/?UI,Day:32/?UI,AttrRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlsetholiday">external documentation</a>.
--spec setHoliday(This, Day) -> ok when
+-spec setHoliday(This, Day) -> 'ok' when
 	This::wxCalendarCtrl(), Day::integer().
 setHoliday(#wx_ref{type=ThisT,ref=ThisRef},Day)
  when is_integer(Day) ->
@@ -331,7 +331,7 @@ setHoliday(#wx_ref{type=ThisT,ref=ThisRef},Day)
   <<ThisRef:32/?UI,Day:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxcalendarctrl.html#wxcalendarctrlresetattr">external documentation</a>.
--spec resetAttr(This, Day) -> ok when
+-spec resetAttr(This, Day) -> 'ok' when
 	This::wxCalendarCtrl(), Day::integer().
 resetAttr(#wx_ref{type=ThisT,ref=ThisRef},Day)
  when is_integer(Day) ->
@@ -352,7 +352,7 @@ hitTest(#wx_ref{type=ThisT,ref=ThisRef},{PosX,PosY})
   <<ThisRef:32/?UI,PosX:32/?UI,PosY:32/?UI>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxCalendarCtrl()) -> ok.
+-spec destroy(This::wxCalendarCtrl()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxCalendarCtrl),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
@@ -679,6 +679,8 @@ findWindow(This,Winid) -> wxWindow:findWindow(This,Winid).
 enable(This, Options) -> wxWindow:enable(This, Options).
 %% @hidden
 enable(This) -> wxWindow:enable(This).
+%% @hidden
+dragAcceptFiles(This,Accept) -> wxWindow:dragAcceptFiles(This,Accept).
 %% @hidden
 disable(This) -> wxWindow:disable(This).
 %% @hidden

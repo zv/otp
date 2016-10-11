@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 1997-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -49,10 +49,6 @@ module(Stream, {Mod,Exp,Attr,Code,NumLabels}) ->
 			[Name, Arity, Entry]),
 	      io:put_chars(Stream, format_asm(Asm))
       end, Code);
-module(Stream, {Mod,Exp,Inter}) ->
-    %% Other kinds of intermediate formats.
-    io:fwrite(Stream, "~w.~n~p.~n", [Mod,Exp]),
-    foreach(fun (F) -> io:format(Stream, "~p.\n", [F]) end, Inter);
 module(Stream, [_|_]=Fs) ->
     %% Form-based abstract format.
     foreach(fun (F) -> io:format(Stream, "~p.\n", [F]) end, Fs).

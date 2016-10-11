@@ -46,29 +46,29 @@
   centreOnParent/2,clearBackground/1,clientToScreen/2,clientToScreen/3,
   close/1,close/2,connect/2,connect/3,convertDialogToPixels/2,convertPixelsToDialog/2,
   destroyChildren/1,disable/1,disconnect/1,disconnect/2,disconnect/3,
-  enable/1,enable/2,findWindow/2,fit/1,fitInside/1,freeze/1,getAcceleratorTable/1,
-  getBackgroundColour/1,getBackgroundStyle/1,getBestSize/1,getCaret/1,
-  getCharHeight/1,getCharWidth/1,getChildren/1,getClientSize/1,getContainingSizer/1,
-  getCursor/1,getDropTarget/1,getEventHandler/1,getExtraStyle/1,getFont/1,
-  getForegroundColour/1,getGrandParent/1,getHandle/1,getHelpText/1,
-  getId/1,getLabel/1,getMaxSize/1,getMinSize/1,getName/1,getParent/1,
-  getPosition/1,getRect/1,getScreenPosition/1,getScreenRect/1,getScrollPos/2,
-  getScrollRange/2,getScrollThumb/2,getSize/1,getSizer/1,getTextExtent/2,
-  getTextExtent/3,getToolTip/1,getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,
-  getWindowVariant/1,hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,
-  hide/1,inheritAttributes/1,initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,
-  isEnabled/1,isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,
-  isTopLevel/1,layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,
-  move/2,move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,
-  navigate/1,navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,
-  popEventHandler/2,popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,
-  refresh/2,refreshRect/2,refreshRect/3,releaseMouse/1,removeChild/2,
-  reparent/2,screenToClient/1,screenToClient/2,scrollLines/2,scrollPages/2,
-  scrollWindow/3,scrollWindow/4,setAcceleratorTable/2,setAutoLayout/2,
-  setBackgroundColour/2,setBackgroundStyle/2,setCaret/2,setClientSize/2,
-  setClientSize/3,setContainingSizer/2,setCursor/2,setDoubleBuffered/2,
-  setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,setFont/2,
-  setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
+  dragAcceptFiles/2,enable/1,enable/2,findWindow/2,fit/1,fitInside/1,
+  freeze/1,getAcceleratorTable/1,getBackgroundColour/1,getBackgroundStyle/1,
+  getBestSize/1,getCaret/1,getCharHeight/1,getCharWidth/1,getChildren/1,
+  getClientSize/1,getContainingSizer/1,getCursor/1,getDropTarget/1,
+  getEventHandler/1,getExtraStyle/1,getFont/1,getForegroundColour/1,
+  getGrandParent/1,getHandle/1,getHelpText/1,getId/1,getLabel/1,getMaxSize/1,
+  getMinSize/1,getName/1,getParent/1,getPosition/1,getRect/1,getScreenPosition/1,
+  getScreenRect/1,getScrollPos/2,getScrollRange/2,getScrollThumb/2,
+  getSize/1,getSizer/1,getTextExtent/2,getTextExtent/3,getToolTip/1,
+  getUpdateRegion/1,getVirtualSize/1,getWindowStyleFlag/1,getWindowVariant/1,
+  hasCapture/1,hasScrollbar/2,hasTransparentBackground/1,hide/1,inheritAttributes/1,
+  initDialog/1,invalidateBestSize/1,isDoubleBuffered/1,isEnabled/1,
+  isExposed/2,isExposed/3,isExposed/5,isRetained/1,isShown/1,isTopLevel/1,
+  layout/1,lineDown/1,lineUp/1,lower/1,makeModal/1,makeModal/2,move/2,
+  move/3,move/4,moveAfterInTabOrder/2,moveBeforeInTabOrder/2,navigate/1,
+  navigate/2,pageDown/1,pageUp/1,parent_class/1,popEventHandler/1,popEventHandler/2,
+  popupMenu/2,popupMenu/3,popupMenu/4,raise/1,refresh/1,refresh/2,refreshRect/2,
+  refreshRect/3,releaseMouse/1,removeChild/2,reparent/2,screenToClient/1,
+  screenToClient/2,scrollLines/2,scrollPages/2,scrollWindow/3,scrollWindow/4,
+  setAcceleratorTable/2,setAutoLayout/2,setBackgroundColour/2,setBackgroundStyle/2,
+  setCaret/2,setClientSize/2,setClientSize/3,setContainingSizer/2,setCursor/2,
+  setDoubleBuffered/2,setDropTarget/2,setExtraStyle/2,setFocus/1,setFocusFromKbd/1,
+  setFont/2,setForegroundColour/2,setHelpText/2,setId/2,setLabel/2,setMaxSize/2,
   setMinSize/2,setName/2,setOwnBackgroundColour/2,setOwnFont/2,setOwnForegroundColour/2,
   setPalette/2,setScrollPos/3,setScrollPos/4,setScrollbar/5,setScrollbar/6,
   setSize/2,setSize/3,setSize/5,setSize/6,setSizeHints/2,setSizeHints/3,
@@ -104,11 +104,11 @@ new(Parent,Id)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlwxtextctrl">external documentation</a>.
 -spec new(Parent, Id, [Option]) -> wxTextCtrl() when
 	Parent::wxWindow:wxWindow(), Id::integer(),
-	Option :: {value, unicode:chardata()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}
-		 | {validator, wx:wx_object()}.
+	Option :: {'value', unicode:chardata()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}
+		 | {'validator', wx:wx_object()}.
 new(#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
  when is_integer(Id),is_list(Options) ->
   ?CLASS(ParentT,wxWindow),
@@ -123,10 +123,10 @@ new(#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
   <<ParentRef:32/?UI,Id:32/?UI, BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlappendtext">external documentation</a>.
--spec appendText(This, Text) -> ok when
+-spec appendText(This, Text) -> 'ok' when
 	This::wxTextCtrl(), Text::unicode:chardata().
 appendText(#wx_ref{type=ThisT,ref=ThisRef},Text)
- when is_list(Text) ->
+ when ?is_chardata(Text) ->
   ?CLASS(ThisT,wxTextCtrl),
   Text_UC = unicode:characters_to_binary([Text,0]),
   wxe_util:cast(?wxTextCtrl_AppendText,
@@ -173,7 +173,7 @@ canUndo(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlclear">external documentation</a>.
--spec clear(This) -> ok when
+-spec clear(This) -> 'ok' when
 	This::wxTextCtrl().
 clear(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -181,7 +181,7 @@ clear(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlcopy">external documentation</a>.
--spec copy(This) -> ok when
+-spec copy(This) -> 'ok' when
 	This::wxTextCtrl().
 copy(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -199,11 +199,11 @@ create(This,Parent,Id)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlcreate">external documentation</a>.
 -spec create(This, Parent, Id, [Option]) -> boolean() when
 	This::wxTextCtrl(), Parent::wxWindow:wxWindow(), Id::integer(),
-	Option :: {value, unicode:chardata()}
-		 | {pos, {X::integer(), Y::integer()}}
-		 | {size, {W::integer(), H::integer()}}
-		 | {style, integer()}
-		 | {validator, wx:wx_object()}.
+	Option :: {'value', unicode:chardata()}
+		 | {'pos', {X::integer(), Y::integer()}}
+		 | {'size', {W::integer(), H::integer()}}
+		 | {'style', integer()}
+		 | {'validator', wx:wx_object()}.
 create(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ParentT,ref=ParentRef},Id, Options)
  when is_integer(Id),is_list(Options) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -219,7 +219,7 @@ create(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=ParentT,ref=ParentRef},Id, O
   <<ThisRef:32/?UI,ParentRef:32/?UI,Id:32/?UI, 0:32,BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlcut">external documentation</a>.
--spec cut(This) -> ok when
+-spec cut(This) -> 'ok' when
 	This::wxTextCtrl().
 cut(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -227,7 +227,7 @@ cut(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrldiscardedits">external documentation</a>.
--spec discardEdits(This) -> ok when
+-spec discardEdits(This) -> 'ok' when
 	This::wxTextCtrl().
 discardEdits(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -235,10 +235,10 @@ discardEdits(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlchangevalue">external documentation</a>.
--spec changeValue(This, Value) -> ok when
+-spec changeValue(This, Value) -> 'ok' when
 	This::wxTextCtrl(), Value::unicode:chardata().
 changeValue(#wx_ref{type=ThisT,ref=ThisRef},Value)
- when is_list(Value) ->
+ when ?is_chardata(Value) ->
   ?CLASS(ThisT,wxTextCtrl),
   Value_UC = unicode:characters_to_binary([Value,0]),
   wxe_util:cast(?wxTextCtrl_ChangeValue,
@@ -383,15 +383,15 @@ isSingleLine(#wx_ref{type=ThisT,ref=ThisRef}) ->
 	This::wxTextCtrl(), File::unicode:chardata().
 
 loadFile(This,File)
- when is_record(This, wx_ref),is_list(File) ->
+ when is_record(This, wx_ref),?is_chardata(File) ->
   loadFile(This,File, []).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlloadfile">external documentation</a>.
 -spec loadFile(This, File, [Option]) -> boolean() when
 	This::wxTextCtrl(), File::unicode:chardata(),
-	Option :: {fileType, integer()}.
+	Option :: {'fileType', integer()}.
 loadFile(#wx_ref{type=ThisT,ref=ThisRef},File, Options)
- when is_list(File),is_list(Options) ->
+ when ?is_chardata(File),is_list(Options) ->
   ?CLASS(ThisT,wxTextCtrl),
   File_UC = unicode:characters_to_binary([File,0]),
   MOpts = fun({fileType, FileType}, Acc) -> [<<1:32/?UI,FileType:32/?UI>>|Acc];
@@ -401,7 +401,7 @@ loadFile(#wx_ref{type=ThisT,ref=ThisRef},File, Options)
   <<ThisRef:32/?UI,(byte_size(File_UC)):32/?UI,(File_UC)/binary, 0:(((8- ((0+byte_size(File_UC)) band 16#7)) band 16#7))/unit:8, BinOpt/binary>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlmarkdirty">external documentation</a>.
--spec markDirty(This) -> ok when
+-spec markDirty(This) -> 'ok' when
 	This::wxTextCtrl().
 markDirty(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -409,7 +409,7 @@ markDirty(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlpaste">external documentation</a>.
--spec paste(This) -> ok when
+-spec paste(This) -> 'ok' when
 	This::wxTextCtrl().
 paste(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -427,7 +427,7 @@ positionToXY(#wx_ref{type=ThisT,ref=ThisRef},Pos)
   <<ThisRef:32/?UI,Pos:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlredo">external documentation</a>.
--spec redo(This) -> ok when
+-spec redo(This) -> 'ok' when
 	This::wxTextCtrl().
 redo(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -435,7 +435,7 @@ redo(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlremove">external documentation</a>.
--spec remove(This, From, To) -> ok when
+-spec remove(This, From, To) -> 'ok' when
 	This::wxTextCtrl(), From::integer(), To::integer().
 remove(#wx_ref{type=ThisT,ref=ThisRef},From,To)
  when is_integer(From),is_integer(To) ->
@@ -444,10 +444,10 @@ remove(#wx_ref{type=ThisT,ref=ThisRef},From,To)
   <<ThisRef:32/?UI,From:32/?UI,To:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlreplace">external documentation</a>.
--spec replace(This, From, To, Value) -> ok when
+-spec replace(This, From, To, Value) -> 'ok' when
 	This::wxTextCtrl(), From::integer(), To::integer(), Value::unicode:chardata().
 replace(#wx_ref{type=ThisT,ref=ThisRef},From,To,Value)
- when is_integer(From),is_integer(To),is_list(Value) ->
+ when is_integer(From),is_integer(To),?is_chardata(Value) ->
   ?CLASS(ThisT,wxTextCtrl),
   Value_UC = unicode:characters_to_binary([Value,0]),
   wxe_util:cast(?wxTextCtrl_Replace,
@@ -464,8 +464,8 @@ saveFile(This)
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlsavefile">external documentation</a>.
 -spec saveFile(This, [Option]) -> boolean() when
 	This::wxTextCtrl(),
-	Option :: {file, unicode:chardata()}
-		 | {fileType, integer()}.
+	Option :: {'file', unicode:chardata()}
+		 | {'fileType', integer()}.
 saveFile(#wx_ref{type=ThisT,ref=ThisRef}, Options)
  when is_list(Options) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -486,7 +486,7 @@ setDefaultStyle(#wx_ref{type=ThisT,ref=ThisRef},#wx_ref{type=StyleT,ref=StyleRef
   <<ThisRef:32/?UI,StyleRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlseteditable">external documentation</a>.
--spec setEditable(This, Editable) -> ok when
+-spec setEditable(This, Editable) -> 'ok' when
 	This::wxTextCtrl(), Editable::boolean().
 setEditable(#wx_ref{type=ThisT,ref=ThisRef},Editable)
  when is_boolean(Editable) ->
@@ -495,7 +495,7 @@ setEditable(#wx_ref{type=ThisT,ref=ThisRef},Editable)
   <<ThisRef:32/?UI,(wxe_util:from_bool(Editable)):32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlsetinsertionpoint">external documentation</a>.
--spec setInsertionPoint(This, Pos) -> ok when
+-spec setInsertionPoint(This, Pos) -> 'ok' when
 	This::wxTextCtrl(), Pos::integer().
 setInsertionPoint(#wx_ref{type=ThisT,ref=ThisRef},Pos)
  when is_integer(Pos) ->
@@ -504,7 +504,7 @@ setInsertionPoint(#wx_ref{type=ThisT,ref=ThisRef},Pos)
   <<ThisRef:32/?UI,Pos:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlsetinsertionpointend">external documentation</a>.
--spec setInsertionPointEnd(This) -> ok when
+-spec setInsertionPointEnd(This) -> 'ok' when
 	This::wxTextCtrl().
 setInsertionPointEnd(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -512,7 +512,7 @@ setInsertionPointEnd(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlsetmaxlength">external documentation</a>.
--spec setMaxLength(This, Len) -> ok when
+-spec setMaxLength(This, Len) -> 'ok' when
 	This::wxTextCtrl(), Len::integer().
 setMaxLength(#wx_ref{type=ThisT,ref=ThisRef},Len)
  when is_integer(Len) ->
@@ -521,7 +521,7 @@ setMaxLength(#wx_ref{type=ThisT,ref=ThisRef},Len)
   <<ThisRef:32/?UI,Len:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlsetselection">external documentation</a>.
--spec setSelection(This, From, To) -> ok when
+-spec setSelection(This, From, To) -> 'ok' when
 	This::wxTextCtrl(), From::integer(), To::integer().
 setSelection(#wx_ref{type=ThisT,ref=ThisRef},From,To)
  when is_integer(From),is_integer(To) ->
@@ -540,17 +540,17 @@ setStyle(#wx_ref{type=ThisT,ref=ThisRef},Start,End,#wx_ref{type=StyleT,ref=Style
   <<ThisRef:32/?UI,Start:32/?UI,End:32/?UI,StyleRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlsetvalue">external documentation</a>.
--spec setValue(This, Value) -> ok when
+-spec setValue(This, Value) -> 'ok' when
 	This::wxTextCtrl(), Value::unicode:chardata().
 setValue(#wx_ref{type=ThisT,ref=ThisRef},Value)
- when is_list(Value) ->
+ when ?is_chardata(Value) ->
   ?CLASS(ThisT,wxTextCtrl),
   Value_UC = unicode:characters_to_binary([Value,0]),
   wxe_util:cast(?wxTextCtrl_SetValue,
   <<ThisRef:32/?UI,(byte_size(Value_UC)):32/?UI,(Value_UC)/binary, 0:(((8- ((0+byte_size(Value_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlshowposition">external documentation</a>.
--spec showPosition(This, Pos) -> ok when
+-spec showPosition(This, Pos) -> 'ok' when
 	This::wxTextCtrl(), Pos::integer().
 showPosition(#wx_ref{type=ThisT,ref=ThisRef},Pos)
  when is_integer(Pos) ->
@@ -559,7 +559,7 @@ showPosition(#wx_ref{type=ThisT,ref=ThisRef},Pos)
   <<ThisRef:32/?UI,Pos:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlundo">external documentation</a>.
--spec undo(This) -> ok when
+-spec undo(This) -> 'ok' when
 	This::wxTextCtrl().
 undo(#wx_ref{type=ThisT,ref=ThisRef}) ->
   ?CLASS(ThisT,wxTextCtrl),
@@ -567,10 +567,10 @@ undo(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxtextctrl.html#wxtextctrlwritetext">external documentation</a>.
--spec writeText(This, Text) -> ok when
+-spec writeText(This, Text) -> 'ok' when
 	This::wxTextCtrl(), Text::unicode:chardata().
 writeText(#wx_ref{type=ThisT,ref=ThisRef},Text)
- when is_list(Text) ->
+ when ?is_chardata(Text) ->
   ?CLASS(ThisT,wxTextCtrl),
   Text_UC = unicode:characters_to_binary([Text,0]),
   wxe_util:cast(?wxTextCtrl_WriteText,
@@ -586,7 +586,7 @@ xYToPosition(#wx_ref{type=ThisT,ref=ThisRef},X,Y)
   <<ThisRef:32/?UI,X:32/?UI,Y:32/?UI>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxTextCtrl()) -> ok.
+-spec destroy(This::wxTextCtrl()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxTextCtrl),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
@@ -913,6 +913,8 @@ findWindow(This,Winid) -> wxWindow:findWindow(This,Winid).
 enable(This, Options) -> wxWindow:enable(This, Options).
 %% @hidden
 enable(This) -> wxWindow:enable(This).
+%% @hidden
+dragAcceptFiles(This,Accept) -> wxWindow:dragAcceptFiles(This,Accept).
 %% @hidden
 disable(This) -> wxWindow:disable(This).
 %% @hidden

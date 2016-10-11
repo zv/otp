@@ -321,7 +321,7 @@ gui_cmd('Kill', State) ->
     exit(State#state.pid, kill),
     State;
 gui_cmd('Messages', State) ->
-    case int:meta(State#state.meta, messages) of
+    _ = case int:meta(State#state.meta, messages) of
 	[] ->
 	    dbg_wx_trace_win:eval_output(State#state.win,"< No Messages!\n", bold);
 	Messages ->
@@ -818,11 +818,14 @@ gui_show_module(Win, Mod, Line, _Cm, Pid, How) ->
 
 gui_load_module(Win, Mod, _Pid) ->
     dbg_wx_trace_win:display(Win,{text, "Loading module..."}),
-    %% Contents = int:contents(Mod, Pid),
-    {ok, Contents} = dbg_iserver:call({raw_contents, Mod, any}),
-    Win2 = dbg_wx_trace_win:show_code(Win, Mod, Contents),
-    dbg_wx_trace_win:display(Win,{text, ""}),
-    Win2.
+    case dbg_iserver:call({raw_contents, Mod, any}) of
+	{ok, Contents} ->
+	    Win2 = dbg_wx_trace_win:show_code(Win, Mod, Contents),
+	    dbg_wx_trace_win:display(Win,{text, ""}),
+	    Win2;
+	not_found ->
+	    dbg_wx_trace_win:show_no_code(Win)
+    end.
 
 gui_update_bindings(Win,Meta) ->
     Bs = int:meta(Meta, bindings, nostack),

@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2002-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2002-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
--include("test_server_line.hrl").
 -include("odbc_test.hrl").
 
 %%--------------------------------------------------------------------
@@ -121,6 +120,7 @@ init_per_suite(Config) when is_list(Config) ->
 	false ->
 	    case (catch odbc:start()) of
 		ok ->
+		    ct:timetrap(?default_timeout),
 		    [{tableName, odbc_test_lib:unique_table_name()}| Config];
 		_ ->
 		    {skip, "ODBC not startable"}
@@ -192,23 +192,22 @@ init_per_testcase(Case, Config) ->
 
 common_init_per_testcase(Case, Config) ->
     PlatformOptions = odbc_test_lib:platform_options(),
-    case atom_to_list(Case) of
-	"binary" ++ _  ->
-	    {ok, Ref} = odbc:connect(?RDBMS:connection_string(), 
-				     [{binary_strings, on}] ++ PlatformOptions);
-	LCase when LCase == "utf8";
-		   LCase == "nchar";
-		   LCase == "nvarchar" ->
-	    {ok, Ref} = odbc:connect(?RDBMS:connection_string(), 
-				     [{binary_strings, on}] ++ PlatformOptions);
-	_ ->
-	    {ok, Ref} = odbc:connect(?RDBMS:connection_string(), PlatformOptions)
-    end,
+    {ok, Ref} = 
+	case atom_to_list(Case) of
+	    "binary" ++ _  ->
+		odbc:connect(?RDBMS:connection_string(), 
+			     [{binary_strings, on}] ++ PlatformOptions);
+	    LCase when LCase == "utf8";
+		       LCase == "nchar";
+		       LCase == "nvarchar" ->
+		odbc:connect(?RDBMS:connection_string(), 
+			     [{binary_strings, on}] ++ PlatformOptions);
+	    _ ->
+		odbc:connect(?RDBMS:connection_string(), PlatformOptions)
+	end,
     odbc_test_lib:strict(Ref, ?RDBMS),
-    Dog = test_server:timetrap(?default_timeout),
-    Temp = lists:keydelete(connection_ref, 1, Config),
-    NewConfig = lists:keydelete(watchdog, 1, Temp),
-    [{watchdog, Dog}, {connection_ref, Ref} | NewConfig].
+    NewConfig = lists:keydelete(connection_ref, 1, Config),
+    [{connection_ref, Ref} | NewConfig].
 
 is_fixed_upper_limit(mysql) ->
     false;
@@ -232,28 +231,23 @@ is_supported_bit(_) ->
 %% Description: Cleanup after each test case
 %%--------------------------------------------------------------------
 end_per_testcase(_TestCase, Config) ->
-    Ref = ?config(connection_ref, Config),
+    Ref = proplists:get_value(connection_ref, Config),
     ok = odbc:disconnect(Ref),
     %% Clean up if needed 
-    Table = ?config(tableName, Config),
+    Table = proplists:get_value(tableName, Config),
     {ok, NewRef} = odbc:connect(?RDBMS:connection_string(), odbc_test_lib:platform_options()),
     odbc:sql_query(NewRef, "DROP TABLE " ++ Table), 
-    odbc:disconnect(NewRef),
-    Dog = ?config(watchdog, Config),
-    test_server:timetrap_cancel(Dog),
-    ok.
+    odbc:disconnect(NewRef).
 
 %%-------------------------------------------------------------------------
 %% Test cases starts here.
 %%-------------------------------------------------------------------------
 
-char_fixed_lower_limit(doc) ->
-    ["Tests fixed length char data type lower boundaries."];
-char_fixed_lower_limit(suite) ->
-    [];
+char_fixed_lower_limit() ->
+    [{doc,"Tests fixed length char data type lower boundaries."}].
 char_fixed_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Below limit
     {error, _} = 
@@ -288,18 +282,16 @@ char_fixed_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-char_fixed_upper_limit(doc) ->
-    ["Tests fixed length char data type upper boundaries."];
-char_fixed_upper_limit(suite) ->
-    [];
+char_fixed_upper_limit() ->
+    [{doc,"Tests fixed length char data type upper boundaries."}].
 char_fixed_upper_limit(Config) when is_list(Config) ->
 
     case ?RDBMS of
 	postgres ->
 	    {skip, "Limit unknown"};
 	_ ->
-	    Ref = ?config(connection_ref, Config),   
-	    Table = ?config(tableName, Config),
+	    Ref = proplists:get_value(connection_ref, Config),   
+	    Table = proplists:get_value(tableName, Config),
 	    
 	    %% Upper limit 
 	    {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -338,14 +330,12 @@ char_fixed_upper_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-char_fixed_padding(doc) ->
-    ["Tests that data that is shorter than the given size is padded " 
-     "with blanks."];
-char_fixed_padding(suite) ->
-    [];
+char_fixed_padding() ->
+    [{doc, "Tests that data that is shorter than the given size is padded " 
+     "with blanks."}].
 char_fixed_padding(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Data should be padded with blanks
     {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -366,13 +356,11 @@ char_fixed_padding(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-varchar_lower_limit(doc) ->
-    ["Tests variable length char data type lower boundaries."];
-varchar_lower_limit(suite) ->
-    [];
+varchar_lower_limit() ->
+    [{doc,"Tests variable length char data type lower boundaries."}].
 varchar_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Below limit
     {error, _} = 
@@ -406,13 +394,11 @@ varchar_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-varchar_upper_limit(doc) ->
-    ["Tests variable length char data type upper boundaries."];
-varchar_upper_limit(suite) ->
-    [];
+varchar_upper_limit() ->
+    [{doc,"Tests variable length char data type upper boundaries."}].
 varchar_upper_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     case ?RDBMS of
 	oracle ->
@@ -456,14 +442,12 @@ varchar_upper_limit(Config) when is_list(Config) ->
     end.
 %%-------------------------------------------------------------------------
 
-varchar_no_padding(doc) ->
-    ["Tests that data that is shorter than the given max size is not padded " 
-     "with blanks."];
-varchar_no_padding(suite) ->
-    [];
+varchar_no_padding() ->
+    [{doc, "Tests that data that is shorter than the given max size is not padded " 
+     "with blanks."}].
 varchar_no_padding(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Data should NOT be padded with blanks
     {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -482,13 +466,11 @@ varchar_no_padding(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-text_lower_limit(doc) ->
-    ["Tests 'long' char data type lower boundaries."];
-text_lower_limit(suite) ->
-    [];
+text_lower_limit() ->
+    [{doc,"Tests 'long' char data type lower boundaries."}].
 text_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -505,15 +487,13 @@ text_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-text_upper_limit(doc) ->
-    [];
-text_upper_limit(suite) ->
-    [];
+text_upper_limit() ->
+    [{doc,"Tests 'text' char data type upper boundaries."}].
 text_upper_limit(Config) when is_list(Config) ->
     
     {skip,"Consumes too much resources" }.
-%%     Ref = ?config(connection_ref, Config),
-%%     Table = ?config(tableName, Config),
+%%     Ref = proplists:get_value(connection_ref, Config),
+%%     Table = proplists:get_value(tableName, Config),
 
 %%     {updated, _} =  % Value == 0 || -1 driver dependent!
 %% 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -535,13 +515,11 @@ text_upper_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-binary_char_fixed_lower_limit(doc) ->
-    ["Tests fixed length char data type lower boundaries."];
-binary_char_fixed_lower_limit(suite) ->
-    [];
+binary_char_fixed_lower_limit() ->
+    [{doc,"Tests fixed length char data type lower boundaries."}].
 binary_char_fixed_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Below limit
     {error, _} = 
@@ -580,18 +558,16 @@ binary_char_fixed_lower_limit(Config) when is_list(Config) ->
 		       ++ "')").
 %%-------------------------------------------------------------------------
 
-binary_char_fixed_upper_limit(doc) ->
-    ["Tests fixed length char data type upper boundaries."];
-binary_char_fixed_upper_limit(suite) ->
-    [];
+binary_char_fixed_upper_limit() ->
+    [{doc,"Tests fixed length char data type upper boundaries."}].
 binary_char_fixed_upper_limit(Config) when is_list(Config) ->
 
     case ?RDBMS of
 	postgres ->
 	    {skip, "Limit unknown"};
 	_ ->
-	    Ref = ?config(connection_ref, Config),   
-	    Table = ?config(tableName, Config),
+	    Ref = proplists:get_value(connection_ref, Config),   
+	    Table = proplists:get_value(tableName, Config),
 	    
 	    %% Upper limit 
 	    {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -631,14 +607,12 @@ binary_char_fixed_upper_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-binary_char_fixed_padding(doc) ->
-    ["Tests that data that is shorter than the given size is padded " 
-     "with blanks."];
-binary_char_fixed_padding(suite) ->
-    [];
+binary_char_fixed_padding() ->
+    [{doc, "Tests that data that is shorter than the given size is padded " 
+     "with blanks."}].
 binary_char_fixed_padding(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Data should be padded with blanks
     {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -659,13 +633,11 @@ binary_char_fixed_padding(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-binary_varchar_lower_limit(doc) ->
-    ["Tests variable length char data type lower boundaries."];
-binary_varchar_lower_limit(suite) ->
-    [];
+binary_varchar_lower_limit() ->
+    [{doc,"Tests variable length char data type lower boundaries."}].
 binary_varchar_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Below limit
     {error, _} = 
@@ -702,13 +674,11 @@ binary_varchar_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-binary_varchar_upper_limit(doc) ->
-    ["Tests variable length char data type upper boundaries."];
-binary_varchar_upper_limit(suite) ->
-    [];
+binary_varchar_upper_limit() ->
+    [{doc,"Tests variable length char data type upper boundaries."}].
 binary_varchar_upper_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     case ?RDBMS of
 	oracle ->
@@ -751,14 +721,12 @@ binary_varchar_upper_limit(Config) when is_list(Config) ->
     end.
 %%-------------------------------------------------------------------------
 
-binary_varchar_no_padding(doc) ->
-    ["Tests that data that is shorter than the given max size is not padded " 
-     "with blanks."];
-binary_varchar_no_padding(suite) ->
-    [];
+binary_varchar_no_padding() ->
+    [{doc,"Tests that data that is shorter than the given max size is not padded " 
+     "with blanks."}].
 binary_varchar_no_padding(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     %% Data should NOT be padded with blanks
     {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -777,13 +745,11 @@ binary_varchar_no_padding(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-binary_text_lower_limit(doc) ->
-    ["Tests 'long' char data type lower boundaries."];
-binary_text_lower_limit(suite) ->
-    [];
+binary_text_lower_limit() ->
+    [{doc,"Tests 'long' char data type lower boundaries."}].
 binary_text_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -800,15 +766,13 @@ binary_text_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-binary_text_upper_limit(doc) ->
-    [];
-binary_text_upper_limit(suite) ->
-    [];
+binary_text_upper_limit() ->
+    [{doc,"Tests text char data type upper boundaries."}].
 binary_text_upper_limit(Config) when is_list(Config) ->
     
     {skip,"Consumes too much resources" }.
-%%     Ref = ?config(connection_ref, Config),
-%%     Table = ?config(tableName, Config),
+%%     Ref = proplists:get_value(connection_ref, Config),
+%%     Table = proplists:get_value(tableName, Config),
 
 %%     {updated, _} =  % Value == 0 || -1 driver dependent!
 %% 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -831,17 +795,15 @@ binary_text_upper_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-tiny_int_lower_limit(doc) ->
-    ["Tests integer of type tinyint."];
-tiny_int_lower_limit(suite) ->
-    [];
+tiny_int_lower_limit() ->
+    [{doc,"Tests integer of type tinyint."}].
 tiny_int_lower_limit(Config) when is_list(Config) -> 
     case ?RDBMS of
 	postgres ->
 	    {skip, "Type tiniyint not supported"};
 	_ ->
-	    Ref = ?config(connection_ref, Config),   
-	    Table = ?config(tableName, Config),
+	    Ref = proplists:get_value(connection_ref, Config),   
+	    Table = proplists:get_value(tableName, Config),
 	    
 	    {updated, _} =  % Value == 0 || -1 driver dependent!
 		odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -865,17 +827,15 @@ tiny_int_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-tiny_int_upper_limit(doc) ->
-    ["Tests integer of type tinyint."];
-tiny_int_upper_limit(suite) ->
-    [];
+tiny_int_upper_limit() ->
+    [{doc,"Tests integer of type tinyint."}].
 tiny_int_upper_limit(Config) when is_list(Config) ->
     case ?RDBMS of
 	postgres ->
 	    {skip, "Type tiniyint not supported"};
 	_ ->
-	    Ref = ?config(connection_ref, Config),   
-	    Table = ?config(tableName, Config),
+	    Ref = proplists:get_value(connection_ref, Config),   
+	    Table = proplists:get_value(tableName, Config),
 	    
 	    {updated, _} =  % Value == 0 || -1 driver dependent!
 		odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -899,13 +859,11 @@ tiny_int_upper_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-small_int_lower_limit(doc) ->
-    ["Tests integer of type smallint."];
-small_int_lower_limit(suite) ->
-    [];
+small_int_lower_limit() ->
+    [{doc,"Tests integer of type smallint."}].
 small_int_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -928,13 +886,11 @@ small_int_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-small_int_upper_limit(doc) ->
-    ["Tests integer of type smallint."];
-small_int_upper_limit(suite) ->
-    [];
+small_int_upper_limit() ->
+    [{doc,"Tests integer of type smallint."}].
 small_int_upper_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -956,13 +912,11 @@ small_int_upper_limit(Config) when is_list(Config) ->
 		       ++ "')").
 
 %%-------------------------------------------------------------------------
-int_lower_limit(doc) ->
-    ["Tests integer of type int."];
-int_lower_limit(suite) ->
-    [];
+int_lower_limit() ->
+    [{doc,"Tests integer of type int."}].
 int_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -984,13 +938,11 @@ int_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-int_upper_limit(doc) ->
-    ["Tests integer of type int."];
-int_upper_limit(suite) ->
-    [];
+int_upper_limit() ->
+    [{doc,"Tests integer of type int."}].
 int_upper_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref, "CREATE TABLE " ++ Table ++ 
@@ -1012,13 +964,11 @@ int_upper_limit(Config) when is_list(Config) ->
 
 
 %%-------------------------------------------------------------------------
-big_int_lower_limit(doc) ->
-    ["Tests integer of type bigint"];
-big_int_lower_limit(suite) ->
-    [];
+big_int_lower_limit() ->
+    [{doc,"Tests integer of type bigint"}].
 big_int_lower_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1041,13 +991,11 @@ big_int_lower_limit(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-big_int_upper_limit(doc) ->
-    ["Tests integer of type bigint."];
-big_int_upper_limit(suite) ->
-    [];
+big_int_upper_limit() ->
+    [{doc,"Tests integer of type bigint."}].
 big_int_upper_limit(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1069,17 +1017,13 @@ big_int_upper_limit(Config) when is_list(Config) ->
 		       ++ "')").
 %%-------------------------------------------------------------------------
 
-bit_false(doc) ->
-    [""];
-bit_false(suite) ->
-    [];
 bit_false(Config) when is_list(Config) ->  
     case ?RDBMS of
 	oracle ->
 	    {skip, "Not supported by driver"};
 	_ ->
-	    Ref = ?config(connection_ref, Config),   
-	    Table = ?config(tableName, Config),
+	    Ref = proplists:get_value(connection_ref, Config),   
+	    Table = proplists:get_value(tableName, Config),
 	    
 	    {updated, _} =  % Value == 0 || -1 driver dependent!
 		odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1103,17 +1047,13 @@ bit_false(Config) when is_list(Config) ->
 
 %%-------------------------------------------------------------------------
 
-bit_true(doc) ->
-    [""];
-bit_true(suite) ->
-    [];
 bit_true(Config) when is_list(Config) ->
     case ?RDBMS of
 	oracle ->
 	    {skip, "Not supported by driver"};
 	_ ->
-	    Ref = ?config(connection_ref, Config),   
-	    Table = ?config(tableName, Config),
+	    Ref = proplists:get_value(connection_ref, Config),   
+	    Table = proplists:get_value(tableName, Config),
 	    
 	    
 	    {updated, _} =  % Value == 0 || -1 driver dependent!
@@ -1137,14 +1077,11 @@ bit_true(Config) when is_list(Config) ->
     end.
 
 %%-------------------------------------------------------------------------
-float_lower_limit(doc) ->
-    [""];
-float_lower_limit(suite) ->
-    [];
+
 float_lower_limit(Config) when is_list(Config) ->   
 
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     case ?RDBMS of
 	mysql ->
@@ -1187,13 +1124,10 @@ float_lower_limit(Config) when is_list(Config) ->
     end.
 
 %%-------------------------------------------------------------------------
-float_upper_limit(doc) ->
-    [""];
-float_upper_limit(suite) ->
-    [];
+
 float_upper_limit(Config) when is_list(Config) ->   
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     case ?RDBMS of
 	mysql ->
@@ -1219,13 +1153,11 @@ float_upper_limit(Config) when is_list(Config) ->
     end.
 
 %%-------------------------------------------------------------------------
-float_zero(doc) ->
-    ["Test the float value zero."];
-float_zero(suite) ->
-    [];
+float_zero() ->
+    [{doc,"Test the float value zero."}].
 float_zero(Config) when is_list(Config) ->   
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1238,13 +1170,11 @@ float_zero(Config) when is_list(Config) ->
     SelectResult =
 	odbc:sql_query(Ref,"SELECT FIELD FROM " ++ Table).
 %%-------------------------------------------------------------------------
-real_zero(doc) ->
-    ["Test the real value zero."];
-real_zero(suite) ->
-    [];
+real_zero() ->
+    [{doc,"Test the real value zero."}].
 real_zero(Config) when is_list(Config) ->   
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     case ?RDBMS of
 	oracle ->
@@ -1263,13 +1193,11 @@ real_zero(Config) when is_list(Config) ->
 		odbc:sql_query(Ref,"SELECT FIELD FROM " ++ Table)
     end.
 %%------------------------------------------------------------------------
-dec_long(doc) ->
-    [""];
 dec_long(suit) ->
     [];
 dec_long(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1282,13 +1210,11 @@ dec_long(Config) when is_list(Config) ->
 	odbc:sql_query(Ref,"SELECT FIELD FROM " ++ Table),
     ["FIELD"] = odbc_test_lib:to_upper(Fields).
 %%------------------------------------------------------------------------
-dec_double(doc) ->
-    [""];
 dec_double(suit) ->
     [];
 dec_double(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1330,13 +1256,11 @@ dec_double(Config) when is_list(Config) ->
     ["FIELD"] = odbc_test_lib:to_upper(Fields2).
 
 %%------------------------------------------------------------------------
-dec_bignum(doc) ->
-    [""];
 dec_bignum(suit) ->
     [];
 dec_bignum(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1362,13 +1286,11 @@ dec_bignum(Config) when is_list(Config) ->
 	odbc:sql_query(Ref,"SELECT FIELD FROM " ++ Table),
     ["FIELD"] = odbc_test_lib:to_upper(Fields1).
 %%------------------------------------------------------------------------
-num_long(doc) ->
-    [""];
 num_long(suit) ->
     [];
 num_long(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1381,13 +1303,11 @@ num_long(Config) when is_list(Config) ->
 	odbc:sql_query(Ref,"SELECT FIELD FROM " ++ Table),
     ["FIELD"] = odbc_test_lib:to_upper(Fields).
 %%------------------------------------------------------------------------
-num_double(doc) ->
-    [""];
 num_double(suit) ->
     [];
 num_double(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1427,13 +1347,11 @@ num_double(Config) when is_list(Config) ->
 	odbc:sql_query(Ref,"SELECT FIELD FROM " ++ Table),
      ["FIELD"] = odbc_test_lib:to_upper(Fields2).
 %%------------------------------------------------------------------------
-num_bignum(doc) ->
-    [""];
 num_bignum(suit) ->
     [];
 num_bignum(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1460,13 +1378,13 @@ num_bignum(Config) when is_list(Config) ->
     ["FIELD"] = odbc_test_lib:to_upper(Fields1).
 
 %%------------------------------------------------------------------------
-utf8(doc) ->
-    ["Test unicode support"];
+utf8() ->
+    [{doc,"Test unicode support"}].
 utf8(suit) ->
     [];
 utf8(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
     
     odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ "(FIELD text)"),
 
@@ -1488,30 +1406,30 @@ utf8(Config) when is_list(Config) ->
 			  end,
 			  Latin1Data),
     
-    test_server:format("UnicodeIn: ~p ~n",[UnicodeIn]),
+    ct:pal("UnicodeIn: ~p ~n",[UnicodeIn]),
     {updated, _} = odbc:param_query(Ref,"INSERT INTO " ++ Table ++ "(FIELD) values(?)",
 				    [{{sql_varchar,50}, UnicodeIn}]),
     
     {selected,_,UnicodeOut} = odbc:sql_query(Ref,"SELECT * FROM " ++ Table),
 
-    test_server:format("UnicodeOut: ~p~n", [UnicodeOut]),
+    ct:pal("UnicodeOut: ~p~n", [UnicodeOut]),
      
     Result = lists:map(fun({Char}) ->
 			       unicode:characters_to_list(Char,utf8)
 		       end, UnicodeOut),
 
-    test_server:format("Result: ~p ~n", [Result]),
+    ct:pal("Result: ~p ~n", [Result]),
     
     Latin1Data = Result.
 %%------------------------------------------------------------------------
 
-nchar(doc) ->
-    ["Test unicode nchar support in sqlserver"];
+nchar() ->
+    [{doc,"Test unicode nchar support in sqlserver"}].
 nchar(suit) ->
     [];
 nchar(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++
@@ -1521,13 +1439,13 @@ nchar(Config) when is_list(Config) ->
 
 %%------------------------------------------------------------------------
 
-nvarchar(doc) ->
-    ["Test 'unicode' nvarchar support"];
+nvarchar() ->
+    [{doc,"Test 'unicode' nvarchar support"}].
 nvarchar(suit) ->
     [];
 nvarchar(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++
@@ -1536,13 +1454,11 @@ nvarchar(Config) when is_list(Config) ->
     w_char_support(Ref, Table, sql_wlongvarchar, 50).
 
 %%------------------------------------------------------------------------
-timestamp(doc) ->
-    [""];
 timestamp(suit) ->
     [];
 timestamp(Config) when is_list(Config) ->
-    Ref = ?config(connection_ref, Config),   
-    Table = ?config(tableName, Config),
+    Ref = proplists:get_value(connection_ref, Config),   
+    Table = proplists:get_value(tableName, Config),
 
     {updated, _} =  % Value == 0 || -1 driver dependent!
 	odbc:sql_query(Ref,  "CREATE TABLE " ++ Table ++ 
@@ -1583,21 +1499,21 @@ w_char_support(Ref, Table, CharType, Size) ->
                           end,
                           Latin1Data),
 
-    test_server:format("UnicodeIn (utf 16): ~p ~n",[UnicodeIn]),
+    ct:pal("UnicodeIn (utf 16): ~p ~n",[UnicodeIn]),
 
     {updated, _} = odbc:param_query(Ref, "INSERT INTO " ++ Table ++ "(FIELD) values(?)",
 				    [{{CharType, Size},UnicodeIn}]),
 
     {selected,_,UnicodeOut} = odbc:sql_query(Ref,"SELECT * FROM " ++ Table),
 
-    test_server:format("UnicodeOut: ~p~n", [UnicodeOut]),
+    ct:pal("UnicodeOut: ~p~n", [UnicodeOut]),
 
     PadResult = lists:map(fun({Unicode}) ->
 			       unicode:characters_to_list(Unicode,{utf16,little})
 		       end,
 		       UnicodeOut),
 
-    test_server:format("Result: ~p~n", [PadResult]),
+    ct:pal("Result: ~p~n", [PadResult]),
 
     Result = lists:map(fun(Str) -> string:strip(Str) end, PadResult),
 

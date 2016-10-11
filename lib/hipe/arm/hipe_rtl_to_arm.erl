@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2005-2009. All Rights Reserved.
+%% Copyright Ericsson AB 2005-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -138,7 +138,6 @@ mk_shift(S, Dst, Src1, ShiftOp, Src2) ->
   end.
 
 mk_shift_ii(S, Dst, Src1, ShiftOp, Src2) ->
-  io:format("~w: RTL alu with two immediates\n", [?MODULE]),
   Tmp = new_untagged_temp(),
   mk_li(Tmp, Src1,
 	mk_shift_ri(S, Dst, Tmp, ShiftOp, Src2)).
@@ -148,10 +147,11 @@ mk_shift_ir(S, Dst, Src1, ShiftOp, Src2) ->
   mk_li(Tmp, Src1,
 	mk_shift_rr(S, Dst, Tmp, ShiftOp, Src2)).
 
-mk_shift_ri(S, Dst, Src1, ShiftOp, Src2) when is_integer(Src2) ->
-  if Src2 >= 0, Src2 < 32 -> ok;
-     true -> io:format("~w: excessive immediate shift ~w\n", [?MODULE,Src2])
-  end,
+mk_shift_ri(S, Dst, Src1, ShiftOp, 0)
+  when ShiftOp =:= lsl; ShiftOp =:= lsr; ShiftOp =:= asr ->
+  [hipe_arm:mk_move(S, Dst, Src1)];
+mk_shift_ri(S, Dst, Src1, ShiftOp, Src2)
+  when is_integer(Src2), Src2 > 0, Src2 < 32 ->
   Am1 = {Src1,ShiftOp,Src2},
   [hipe_arm:mk_move(S, Dst, Am1)].
 
@@ -178,7 +178,6 @@ mk_arith(S, Dst, Src1, ArithOp, Src2) ->
   end.
 
 mk_arith_ii(S, Dst, Src1, ArithOp, Src2) ->
-  io:format("~w: RTL alu with two immediates\n", [?MODULE]),
   Tmp = new_untagged_temp(),
   mk_li(Tmp, Src1,
 	mk_arith_ri(S, Dst, Tmp, ArithOp, Src2)).
@@ -276,7 +275,6 @@ mk_branch(Src1, Cond, Src2, TrueLab, FalseLab, Pred) ->
   end.
 
 mk_branch_ii(Imm1, Cond, Imm2, TrueLab, FalseLab, Pred) ->
-  io:format("~w: RTL branch with two immediates\n", [?MODULE]),
   Tmp = new_untagged_temp(),
   mk_li(Tmp, Imm1,
 	mk_branch_ri(Tmp, Cond, Imm2,
@@ -471,7 +469,6 @@ mk_load(Dst, Base1, Base2, LoadSize, LoadSign) ->
   end.
 
 mk_load_ii(Dst, Base1, Base2, LdOp) ->
-  io:format("~w: RTL load with two immediates\n", [?MODULE]),
   Tmp = new_untagged_temp(),
   mk_li(Tmp, Base1,
 	mk_load_ri(Dst, Tmp, Base2, LdOp)).
@@ -484,7 +481,6 @@ mk_load_rr(Dst, Base1, Base2, LdOp) ->
   [hipe_arm:mk_load(LdOp, Dst, Am2)].
 
 mk_ldrsb_ii(Dst, Base1, Base2) ->
-  io:format("~w: RTL load signed byte with two immediates\n", [?MODULE]),
   Tmp = new_untagged_temp(),
   mk_li(Tmp, Base1,
 	mk_ldrsb_ri(Dst, Tmp, Base2)).
@@ -542,7 +538,7 @@ conv_return(I, Map, Data) ->
   {I2, Map0, Data}.
 
 conv_store(I, Map, Data) ->
-  {Base, Map0} = conv_dst(hipe_rtl:store_base(I), Map),
+  {Base, Map0} = conv_src(hipe_rtl:store_base(I), Map),
   {Src, Map1} = conv_src(hipe_rtl:store_src(I), Map0),
   {Offset, Map2} = conv_src(hipe_rtl:store_offset(I), Map1),
   StoreSize = hipe_rtl:store_size(I),
@@ -566,13 +562,28 @@ mk_store(Src, Base, Offset, StoreSize) ->
   end.
 
 mk_store2(Src, Base, Offset, StOp) ->
-  case hipe_arm:is_temp(Offset) of
+  case hipe_arm:is_temp(Base) of
     true ->
-      mk_store_rr(Src, Base, Offset, StOp);
-    _ ->
-      mk_store_ri(Src, Base, Offset, StOp)
+      case hipe_arm:is_temp(Offset) of
+	true ->
+	  mk_store_rr(Src, Base, Offset, StOp);
+	_ ->
+	  mk_store_ri(Src, Base, Offset, StOp)
+      end;
+    false ->
+      case hipe_arm:is_temp(Offset) of
+	true ->
+	  mk_store_ri(Src, Offset, Base, StOp);
+	_ ->
+	  mk_store_ii(Src, Base, Offset, StOp)
+      end
   end.
-  
+
+mk_store_ii(Src, Base, Offset, StOp) ->
+  Tmp = new_untagged_temp(),
+  mk_li(Tmp, Base,
+	mk_store_ri(Src, Tmp, Offset, StOp)).
+
 mk_store_ri(Src, Base, Offset, StOp) ->
   hipe_arm:mk_store(StOp, Src, Base, Offset, 'new', []).
    

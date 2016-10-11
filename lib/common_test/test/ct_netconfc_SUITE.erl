@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2009-2014. All Rights Reserved.
+%% Copyright Ericsson AB 2009-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -44,11 +44,28 @@
 %% there will be clashes with logging processes etc).
 %%--------------------------------------------------------------------
 init_per_suite(Config) ->
-    case application:load(crypto) of
-	{error,Reason} when Reason=/={already_loaded,crypto} ->
-	    {skip, Reason};
-	_ ->
-	    ct_test_support:init_per_suite(Config)
+    case check_crypto_and_ssh() of
+	ok ->
+	    ct_test_support:init_per_suite(Config);
+	Skip ->
+	    Skip
+    end.
+
+check_crypto_and_ssh() ->
+    (catch code:load_file(crypto)),
+    case code:is_loaded(crypto) of
+	{file,_} ->
+	    case catch ssh:start() of
+		Ok when Ok==ok; Ok=={error,{already_started,ssh}} ->
+		    ct:log("ssh started",[]),
+		    ok;
+		Other ->
+		    ct:log("could not start ssh: ~p",[Other]),
+		    {skip, "SSH could not be started!"}
+	    end;
+	Other ->
+	    ct:log("could not load crypto: ~p",[Other]),
+	    {skip, "crypto could not be loaded!"}
     end.
 
 end_per_suite(Config) ->

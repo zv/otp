@@ -42,14 +42,15 @@
 %% TypeDocs is a dict of {Name, Doc}.
 %% Note: #t_typedef.name is set to {record, R} for record types.
 type(Form, TypeDocs) ->
-    {Name, Data0} = erl_syntax_lib:analyze_wild_attribute(Form),
-    type = tag(Name),
+    {Name, Data0} = analyze_type_attribute(Form),
     {TypeName, Type, Args, Doc} =
         case Data0 of
-            {{record, R}, Fs, []} ->
+            {R, Fs} ->
+                record = Name,
                 L = erl_syntax:get_pos(Form),
                 {{record, R}, {type, L, record, [{atom,L,R} | Fs]}, [], ""};
             {N,T,As} ->
+                type = tag(Name),
                 Doc0 =
                     case dict:find({N, length(As)}, TypeDocs) of
                         {ok, Doc1} ->
@@ -188,7 +189,7 @@ strip([_ | S]) ->
 %% Find the type name and the greatest line number of a type spec.
 %% Should use syntax_tools but this has to do for now.
 get_name_and_last_line(F) ->
-    {Name, Data} = erl_syntax_lib:analyze_wild_attribute(F),
+    {Name, Data} = analyze_type_attribute(F),
     type = edoc_specs:tag(Name),
     Attr = {attribute, erl_syntax:get_pos(F), Name, Data},
     Fun = fun(A) ->
@@ -229,6 +230,7 @@ get_all_tags(Es) ->
 %% Turns an opaque type into an abstract datatype.
 %% Note: top level annotation is ignored.
 opaque2abstr(opaque, _T) -> undefined;
+opaque2abstr(record, T) -> T;
 opaque2abstr(type, T) -> T.
 
 %% Replaces the parameters extracted from the source (by
@@ -367,11 +369,11 @@ d2e({type,_,map,any}, _Prec) ->
 d2e({type,_,map,Es}, _Prec) ->
     #t_map{types = d2e(Es) };
 d2e({type,_,map_field_assoc,[K,V]}, Prec) ->
-    T = #t_map_field{k_type = d2e(K), v_type=d2e(V) },
+    T = #t_map_field{assoc_type = assoc, k_type = d2e(K), v_type=d2e(V) },
     {P,_R} = erl_parse:type_preop_prec('#'),
     maybe_paren(P, Prec, T);
-d2e({type,_,map_field_exact,K,V}, Prec) ->
-    T = #t_map_field{k_type = d2e(K), v_type=d2e(V) },
+d2e({type,_,map_field_exact,[K,V]}, Prec) ->
+    T = #t_map_field{assoc_type = exact, k_type = d2e(K), v_type=d2e(V) },
     {P,_R} = erl_parse:type_preop_prec('#'),
     maybe_paren(P, Prec, T);
 d2e({type,_,tuple,Ts0}, _Prec) ->
@@ -607,6 +609,16 @@ find_field(F, Fs) ->
 type_name(#tag{name = type,
                data = {#t_typedef{name = Name, args = As},_}}) ->
     {Name, length(As)}.
+
+analyze_type_attribute(Form) ->
+    Name = erl_syntax:atom_value(erl_syntax:attribute_name(Form)),
+    case tag(Name) of
+        type ->
+            erl_syntax_lib:analyze_wild_attribute(Form);
+        _ when Name =:= record ->
+            {attribute, _, record, {N, Fields}} = erl_syntax:revert(Form),
+            {record, {N, Fields}}
+    end.
 
 %% @doc Return `true' if `Tag' is one of the specification and type
 %% attribute tags recognized by the Erlang compiler.

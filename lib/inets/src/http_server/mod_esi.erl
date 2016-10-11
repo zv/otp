@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1997-2011. All Rights Reserved.
+%% Copyright Ericsson AB 1997-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -241,7 +241,7 @@ alias_match_str(Alias, eval_script_alias) ->
 %%------------------------ Erl mechanism --------------------------------
 
 erl(#mod{method = Method} = ModData, ESIBody, Modules) 
-  when (Method =:= "GET") orelse (Method =:= "HEAD") ->
+  when (Method =:= "GET") orelse (Method =:= "HEAD") orelse (Method =:= "DELETE") ->
     ?hdrt("erl", [{method, Method}]),
     case httpd_util:split(ESIBody,":|%3A|/",2) of
 	{ok, [ModuleName, FuncAndInput]} ->
@@ -264,35 +264,32 @@ erl(#mod{method = Method} = ModData, ESIBody, Modules)
 	    {proceed, [{status,{400, none, BadRequest}} | ModData#mod.data]}
     end;
 
-erl(#mod{request_uri  = ReqUri, 
-	 method       = "PUT",
-         http_version = Version, 
-	 data         = Data}, _ESIBody, _Modules) ->
-    ?hdrt("erl", [{method, put}]),
-    {proceed, [{status,{501,{"PUT", ReqUri, Version},
-			?NICE("Erl mechanism doesn't support method PUT")}}|
-	       Data]};
+erl(#mod{method = "PUT", entity_body = Body} = ModData,
+    ESIBody, Modules) ->
+    case httpd_util:split(ESIBody,":|%3A|/",2) of
+	{ok, [ModuleName, FuncAndInput]} ->                
+	    case httpd_util:split(FuncAndInput,"[\?/]",2) of
+		{ok, [FunctionName, Input]} ->
+		    generate_webpage(ModData, ESIBody, Modules,
+				     list_to_atom(ModuleName),
+				     FunctionName, {Input,Body},
+				     [{entity_body, Body} |
+				      script_elements(FuncAndInput, Input)]);
+		{ok, [FunctionName]} ->
+		    generate_webpage(ModData, ESIBody, Modules,
+				     list_to_atom(ModuleName),
+				     FunctionName, {undefined,Body},
+				     [{entity_body, Body} |
+				      script_elements(FuncAndInput, "")]);
+		{ok, BadRequest} ->
+		    {proceed,[{status,{400,none, BadRequest}} |
+			      ModData#mod.data]}
+	    end;
+	{ok, BadRequest} ->
+	    {proceed, [{status,{400, none, BadRequest}} | ModData#mod.data]}
+    end;   
 
-erl(#mod{request_uri  = ReqUri, 
-	 method       = "DELETE",
-         http_version = Version, 
-	 data         = Data}, _ESIBody, _Modules) ->
-    ?hdrt("erl", [{method, delete}]),
-    {proceed,[{status,{501,{"DELETE", ReqUri, Version},
-		       ?NICE("Erl mechanism doesn't support method DELETE")}}|
-	      Data]};
-
-erl(#mod{request_uri  = ReqUri, 
-	 method       = "PATCH",
-         http_version = Version, 
-	 data         = Data}, _ESIBody, _Modules) ->
-    ?hdrt("erl", [{method, patch}]),
-    {proceed, [{status,{501,{"PATCH", ReqUri, Version},
-			?NICE("Erl mechanism doesn't support method PATCH")}}|
-	       Data]};
-
-erl(#mod{method      = "POST", 
-	 entity_body = Body} = ModData, ESIBody, Modules) ->
+erl(#mod{method = "POST", entity_body = Body} = ModData, ESIBody, Modules) ->
     ?hdrt("erl", [{method, post}]),
     case httpd_util:split(ESIBody,":|%3A|/",2) of
 	{ok,[ModuleName, Function]} ->
@@ -301,7 +298,16 @@ erl(#mod{method      = "POST",
 			     Function, Body, [{entity_body, Body}]);
 	{ok, BadRequest} ->
 	    {proceed,[{status, {400, none, BadRequest}} | ModData#mod.data]}
-    end.
+    end;
+
+erl(#mod{request_uri  = ReqUri, 
+	 method       = "PATCH",
+         http_version = Version, 
+	 data         = Data}, _ESIBody, _Modules) ->
+    ?hdrt("erl", [{method, patch}]),
+    {proceed, [{status,{501,{"PATCH", ReqUri, Version},
+			?NICE("Erl mechanism doesn't support method PATCH")}}|
+	       Data]}.
 
 generate_webpage(ModData, ESIBody, [all], Module, FunctionName,
 		 Input, ScriptElements) ->

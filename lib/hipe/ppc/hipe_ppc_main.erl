@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2004-2009. All Rights Reserved.
+%% Copyright Ericsson AB 2004-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@
 
 rtl_to_ppc(MFA, RTL, Options) ->
   PPC1 = hipe_rtl_to_ppc:translate(RTL),
-  PPC2 = hipe_ppc_ra:ra(PPC1, Options),
-  PPC3 = hipe_ppc_frame:frame(PPC2),
+  PPC1CFG = hipe_ppc_cfg:init(PPC1),
+  PPC2CFG = hipe_ppc_ra:ra(PPC1CFG, Options),
+  PPC3CFG = hipe_ppc_frame:frame(PPC2CFG),
+  PPC3 = hipe_ppc_cfg:linearise(PPC3CFG),
   PPC4 = hipe_ppc_finalise:finalise(PPC3),
   ppc_pp(PPC4, MFA, Options),
   {native, powerpc, {unprofiled, PPC4}}.

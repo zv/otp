@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2008-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2008-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@
 %% Internal application API
 -export([cache_create/0, cache_lookup/2, cache_update/2, 
 	 cache_delete/1, cache_delete/2,  cache_foldl/3,
-	 cache_find/2,
+	 cache_info/2,  cache_find/2,
 	 get_print_info/1]).
 
 -record(state, {
@@ -93,10 +93,15 @@ call(ChannelPid, Msg, TimeOute) ->
     catch 
  	exit:{noproc, _} ->
  	    {error, closed};
+	exit:{normal, _} ->
+	    {error, closed};
+	exit:{shutdown, _} ->
+	    {error, closed};
+	exit:{{shutdown, _}, _} ->
+	    {error, closed};
  	exit:{timeout, _} ->
  	    {error, timeout}
     end.
-
 
 cast(ChannelPid, Msg) ->
     gen_server:cast(ChannelPid, Msg).
@@ -335,6 +340,9 @@ cache_delete(Cache) ->
 cache_foldl(Fun, Acc, Cache) ->
     ets:foldl(Fun, Acc, Cache).
     
+cache_info(num_entries, Cache) ->
+    proplists:get_value(size, ets:info(Cache)).
+
 cache_find(ChannelPid, Cache) ->
    case ets:match_object(Cache, #channel{user = ChannelPid}) of
        [] ->

@@ -36,6 +36,11 @@
 %% been reasonably well tested, but the possibility of errors remains.
 %% Keep backups of your original code safely stored, until you feel
 %% confident that the new, modified code can be trusted.
+%%
+%% @type syntaxTree() = erl_syntax:syntaxTree(). An abstract syntax
+%% tree. See the {@link erl_syntax} module for details.
+%%
+%% @type filename() = file:filename().
 
 -module(erl_tidy).
 
@@ -79,7 +84,6 @@ dir(Dir) ->
 
 %% =====================================================================
 %% @spec dir(Directory::filename(), Options::[term()]) -> ok
-%%           filename() = file:filename()
 %%
 %% @doc Tidies Erlang source files in a directory and its
 %% subdirectories.
@@ -206,7 +210,7 @@ file__defaults() ->
      {verbose, false}].
 
 default_printer() ->
-    fun (Tree, Options) -> erl_prettypr:format(Tree, Options) end.
+    fun erl_prettypr:format/2.
 
 %% =====================================================================
 %% @spec file(Name) -> ok
@@ -253,7 +257,7 @@ file(Name) ->
 %%
 %%   <dt>{printer, Function}</dt>
 %%       <dd><ul>
-%%         <li>`Function = (syntaxTree()) -> string()'</li>
+%%         <li>`Function = (syntaxTree(), [term()]) -> string()'</li>
 %%       </ul>
 %%
 %%       Specifies a function for prettyprinting Erlang syntax trees.
@@ -414,7 +418,7 @@ write_module(Tree, Name, Opts) ->
 
 print_module(Tree, Opts) ->
 	Printer = proplists:get_value(printer, Opts),
-	io:format(Printer(Tree, Opts)).
+	io:put_chars(Printer(Tree, Opts)).
 
 output(FD, Printer, Tree, Opts) ->
     io:put_chars(FD, Printer(Tree, Opts)),
@@ -513,7 +517,6 @@ module(Forms) ->
 %% @spec module(Forms, Options::[term()]) -> syntaxTree()
 %%
 %%          Forms = syntaxTree() | [syntaxTree()]
-%%          syntaxTree() = erl_syntax:syntaxTree()
 %%
 %% @doc Tidies a syntax tree representation of a module
 %% definition. The given `Forms' may be either a single
@@ -937,7 +940,7 @@ hidden_uses_2(Tree, Used) ->
 
 -record(env, {file		       :: file:filename(),
               module                   :: atom(),
-              current                  :: fa(),
+              current                  :: fa() | 'undefined',
               imports = dict:new()     :: dict:dict(atom(), atom()),
               context = normal	       :: context(),
               verbosity = 1	       :: 0 | 1 | 2,
@@ -949,10 +952,10 @@ hidden_uses_2(Tree, Used) ->
               new_guard_tests = true   :: boolean(),
 	      old_guard_tests = false  :: boolean()}).
 
--record(st, {varc              :: non_neg_integer(),
+-record(st, {varc              :: non_neg_integer() | 'undefined',
 	     used = sets:new() :: sets:set({atom(), arity()}),
 	     imported          :: sets:set({atom(), arity()}),
-	     vars              :: sets:set(atom()),
+	     vars              :: sets:set(atom()) | 'undefined',
 	     functions         :: sets:set({atom(), arity()}),
 	     new_forms = []    :: [erl_syntax:syntaxTree()],
 	     rename            :: dict:dict(mfa(), {atom(), atom()})}).
@@ -1064,13 +1067,13 @@ visit_clause(Tree, Env, St0) ->
 
 visit_infix_expr(Tree, #env{context = guard_test}, St0) ->
     %% Detect transition from guard test to guard expression.
-    visit_other(Tree, #env{context = guard_expr}, St0);
+    visit_other(Tree, #env{context = guard_expr, file = ""}, St0);
 visit_infix_expr(Tree, Env, St0) ->
     visit_other(Tree, Env, St0).
 
 visit_prefix_expr(Tree, #env{context = guard_test}, St0) ->
     %% Detect transition from guard test to guard expression.
-    visit_other(Tree, #env{context = guard_expr}, St0);
+    visit_other(Tree, #env{context = guard_expr, file = ""}, St0);
 visit_prefix_expr(Tree, Env, St0) ->
     visit_other(Tree, Env, St0).
 

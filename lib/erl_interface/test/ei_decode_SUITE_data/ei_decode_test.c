@@ -1,7 +1,7 @@
 /*
  * %CopyrightBegin%
  *
- * Copyright Ericsson AB 2004-2013. All Rights Reserved.
+ * Copyright Ericsson AB 2004-2016. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -377,8 +377,14 @@ TESTCASE(test_ei_decode_ulong)
       EI_DECODE_2     (decode_ulong,  11, unsigned long,  ll(0x8000000000000000));
       EI_DECODE_2     (decode_ulong,  11, unsigned long,  ll(0xffffffffffffffff));
     } else {
-      EI_DECODE_2     (decode_ulong,  7, unsigned long,  0x80000000);
-      EI_DECODE_2     (decode_ulong,  7, unsigned long,  0xffffffff);
+        if (sizeof(void*) > 4) {
+            /* Windows */
+            EI_DECODE_2_FAIL(decode_ulong,  11, unsigned long,  ll(0x8000000000000000));
+            EI_DECODE_2_FAIL(decode_ulong,  11, unsigned long,  ll(0xffffffffffffffff));
+        } else {
+            EI_DECODE_2     (decode_ulong,  7, unsigned long,  0x80000000);
+            EI_DECODE_2     (decode_ulong,  7, unsigned long,  0xffffffff);
+        }
     }
 
     EI_DECODE_2_FAIL(decode_ulong,  9, unsigned long,  ll(0x7fffffffffff));

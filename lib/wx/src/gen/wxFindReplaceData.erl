@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2008-2013. All Rights Reserved.
+%% Copyright Ericsson AB 2008-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ getFlags(#wx_ref{type=ThisT,ref=ThisRef}) ->
   <<ThisRef:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxfindreplacedata.html#wxfindreplacedatasetflags">external documentation</a>.
--spec setFlags(This, Flags) -> ok when
+-spec setFlags(This, Flags) -> 'ok' when
 	This::wxFindReplaceData(), Flags::integer().
 setFlags(#wx_ref{type=ThisT,ref=ThisRef},Flags)
  when is_integer(Flags) ->
@@ -84,27 +84,27 @@ setFlags(#wx_ref{type=ThisT,ref=ThisRef},Flags)
   <<ThisRef:32/?UI,Flags:32/?UI>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxfindreplacedata.html#wxfindreplacedatasetfindstring">external documentation</a>.
--spec setFindString(This, Str) -> ok when
+-spec setFindString(This, Str) -> 'ok' when
 	This::wxFindReplaceData(), Str::unicode:chardata().
 setFindString(#wx_ref{type=ThisT,ref=ThisRef},Str)
- when is_list(Str) ->
+ when ?is_chardata(Str) ->
   ?CLASS(ThisT,wxFindReplaceData),
   Str_UC = unicode:characters_to_binary([Str,0]),
   wxe_util:cast(?wxFindReplaceData_SetFindString,
   <<ThisRef:32/?UI,(byte_size(Str_UC)):32/?UI,(Str_UC)/binary, 0:(((8- ((0+byte_size(Str_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc See <a href="http://www.wxwidgets.org/manuals/2.8.12/wx_wxfindreplacedata.html#wxfindreplacedatasetreplacestring">external documentation</a>.
--spec setReplaceString(This, Str) -> ok when
+-spec setReplaceString(This, Str) -> 'ok' when
 	This::wxFindReplaceData(), Str::unicode:chardata().
 setReplaceString(#wx_ref{type=ThisT,ref=ThisRef},Str)
- when is_list(Str) ->
+ when ?is_chardata(Str) ->
   ?CLASS(ThisT,wxFindReplaceData),
   Str_UC = unicode:characters_to_binary([Str,0]),
   wxe_util:cast(?wxFindReplaceData_SetReplaceString,
   <<ThisRef:32/?UI,(byte_size(Str_UC)):32/?UI,(Str_UC)/binary, 0:(((8- ((0+byte_size(Str_UC)) band 16#7)) band 16#7))/unit:8>>).
 
 %% @doc Destroys this object, do not use object again
--spec destroy(This::wxFindReplaceData()) -> ok.
+-spec destroy(This::wxFindReplaceData()) -> 'ok'.
 destroy(Obj=#wx_ref{type=Type}) ->
   ?CLASS(Type,wxFindReplaceData),
   wxe_util:destroy(?DESTROY_OBJECT,Obj),
