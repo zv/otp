@@ -3,6 +3,13 @@
 # emacs
 *~
 lib/tools/emacs/*.elc
+
+# gtags
+
+GPATH
+GRTAGS
+GTAGS
+
 # vim
 .*.sw[a-z]
 
